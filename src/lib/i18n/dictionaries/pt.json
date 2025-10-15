@@ -1,0 +1,5 @@
+{
+  "app": { "title": "MKTECH", "subtitle": "Tecnologia gamificada para EF1/EF2" },
+  "auth": { "login": "Entrar", "logout": "Sair" },
+  "join": { "scan": "Escanear QR", "code": "Digitar código", "enter": "Entrar" }
+}

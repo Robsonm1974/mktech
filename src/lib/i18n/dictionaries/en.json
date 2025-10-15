@@ -1,0 +1,5 @@
+{
+  "app": { "title": "MKTECH", "subtitle": "Gamified technology for Elementary Education" },
+  "auth": { "login": "Login", "logout": "Logout" },
+  "join": { "scan": "Scan QR", "code": "Enter code", "enter": "Enter" }
+}
