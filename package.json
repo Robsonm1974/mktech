@@ -12,6 +12,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "preflight": "tsx scripts/preflight.ts",
+    "setup-db": "tsx scripts/setup-database.ts",
     "mcp:filesystem": "npx @modelcontextprotocol/server-filesystem C:\\Users\\Robson\\MeusProjetos\\mkTech\\mktech",
     "mcp:supabase": "npx @modelcontextprotocol/server-supabase --project-url https://kcvlauuzwnrfdgwlxcnw.supabase.co --api-key eyJhbGciOiJIUzI1NR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjdmxhdXV6d25yZmRnd2x4Y253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTkwNjUsImV4cCI6MjA3NjA3NTA2NX0.j_8sAw28MpoEHzV6pKF6RNfVvVwVN1MQEkXEtrQDTH4",
     "mcp:test": "echo 'Testing MCP servers...' && pnpm mcp:filesystem"
@@ -50,6 +51,7 @@
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.5",
+    "supabase": "^2.51.0",
     "tsx": "^4.20.6",
     "typescript": "^5"
   }
