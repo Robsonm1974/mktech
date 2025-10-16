@@ -214,3 +214,4 @@ pnpm mcp:supabase    # Servidor MCP Supabase
 ---
 
 **🎉 MKTECH está pronto para produção!**
+

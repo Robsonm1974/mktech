@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,7 @@ import { Loader2, QrCode, Hash } from 'lucide-react'
 
 type LoginMode = 'qr' | 'code'
 
-export default function EntrarPage() {
+function EntrarPageContent() {
   const [mode, setMode] = useState<LoginMode>('qr')
   const [sessionCode, setSessionCode] = useState('')
   const [studentId, setStudentId] = useState('')
@@ -23,9 +23,19 @@ export default function EntrarPage() {
   const [step, setStep] = useState<'session' | 'student' | 'auth'>('session')
   
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createSupabaseBrowserClient()
 
   const icons = ['dog', 'cat', 'fruit', 'flower']
+
+  // Ler código da URL se vier do QR Code
+  useEffect(() => {
+    const codeFromUrl = searchParams?.get('code')
+    if (codeFromUrl && !sessionCode) {
+      console.log('📱 QR Code detectado. Código:', codeFromUrl)
+      setSessionCode(codeFromUrl.toUpperCase())
+    }
+  }, [searchParams, sessionCode])
 
   const handleSessionSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,11 +64,16 @@ export default function EntrarPage() {
       }
 
       // Buscar alunos da turma
+      console.log('🔍 Buscando alunos da turma:', session.turma_id)
+      
       const { data: alunos, error: alunosError } = await supabase
         .from('alunos')
-        .select('id, full_name, icone_afinidade, ativo')
+        .select('id, full_name, icone_afinidade, active')
         .eq('turma_id', session.turma_id)
-        .eq('ativo', true)
+        .eq('active', true)
+      
+      console.log('✅ Alunos encontrados:', alunos)
+      console.log('❌ Erro ao buscar alunos:', alunosError)
 
       if (alunosError || !alunos?.length) {
         throw new Error('Nenhum aluno encontrado nesta turma')
@@ -104,6 +119,18 @@ export default function EntrarPage() {
     try {
       const sessionData = JSON.parse(sessionStorage.getItem('currentSession') || '{}')
       
+      // Logging detalhado
+      console.log('🔐 Tentando autenticar aluno...')
+      console.log('📦 SessionData:', sessionData)
+      console.log('👤 StudentId:', studentId)
+      console.log('🔑 PIN fornecido:', pin.length, 'dígitos')
+      console.log('🎨 Ícone selecionado:', selectedIcon)
+      
+      // Verificar se sessionData está válido
+      if (!sessionData.sessionId) {
+        throw new Error('SessionId não encontrado. Recomece o processo.')
+      }
+      
       // Buscar dados do aluno
       const { data: aluno, error: alunoError } = await supabase
         .from('alunos')
@@ -111,20 +138,27 @@ export default function EntrarPage() {
         .eq('id', studentId)
         .single()
 
+      console.log('✅ Aluno encontrado:', aluno)
+      console.log('❌ Erro ao buscar aluno:', alunoError)
+
       if (alunoError || !aluno) {
         throw new Error('Aluno não encontrado')
       }
 
       // Validar PIN e ícone
       if (aluno.pin_code !== pin) {
+        console.error('❌ PIN incorreto. Esperado:', aluno.pin_code, 'Fornecido:', pin)
         throw new Error('PIN incorreto')
       }
 
       if (aluno.icone_afinidade !== selectedIcon) {
+        console.error('❌ Ícone incorreto. Esperado:', aluno.icone_afinidade, 'Fornecido:', selectedIcon)
         throw new Error('Ícone incorreto')
       }
 
-      // Criar sessão do aluno (pode usar localStorage ou cookies)
+      console.log('✅ Validação bem-sucedida!')
+
+      // Criar sessão do aluno
       const studentSession = {
         alunoId: studentId,
         sessionId: sessionData.sessionId,
@@ -134,10 +168,42 @@ export default function EntrarPage() {
       }
 
       localStorage.setItem('studentSession', JSON.stringify(studentSession))
+      
+      console.log('✅ StudentSession salva:', studentSession)
+
+      // Registrar aluno na sessão (atualizar array de participantes)
+      try {
+        const { data: currentSession } = await supabase
+          .from('sessions')
+          .select('alunos_participantes')
+          .eq('id', sessionData.sessionId)
+          .single()
+
+        const participantes = currentSession?.alunos_participantes || []
+        if (!participantes.includes(studentId)) {
+          participantes.push(studentId)
+          
+          const { error: updateError } = await supabase
+            .from('sessions')
+            .update({ alunos_participantes: participantes })
+            .eq('id', sessionData.sessionId)
+
+          if (updateError) {
+            console.warn('⚠️ Não foi possível registrar aluno na sessão:', updateError)
+          } else {
+            console.log('✅ Aluno registrado na sessão')
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao registrar aluno:', err)
+      }
+
+      console.log('🚀 Redirecionando para:', `/sessao/${sessionData.sessionId}`)
 
       // Redirecionar para a sessão
       router.push(`/sessao/${sessionData.sessionId}`)
     } catch (err) {
+      console.error('❌ Erro na autenticação:', err)
       setError(err instanceof Error ? err.message : 'Erro na autenticação')
     } finally {
       setLoading(false)
@@ -352,5 +418,17 @@ export default function EntrarPage() {
         {step === 'auth' && renderAuthStep()}
       </div>
     </div>
+  )
+}
+
+export default function EntrarPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    }>
+      <EntrarPageContent />
+    </Suspense>
   )
 }

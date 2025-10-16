@@ -22,7 +22,7 @@ interface SessionData {
       tipo: string
       duracao_minutos: number
       pontos_por_bloco: number
-      quizzes: Array<{
+      quizzes?: Array<{
         id: string
         titulo: string
         tipo: string
@@ -76,44 +76,112 @@ export default function SessaoPage() {
   }
 
   const loadSessionData = async () => {
+    console.log('🔍 Carregando sessão:', sessionId)
+    
     try {
+      // Primeiro, buscar dados básicos da sessão
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
         .select(`
           id,
           status,
           bloco_ativo_numero,
-          aulas!inner(
-            titulo,
-            descricao,
-            blocos!inner(
-              id,
-              numero_sequencia,
-              titulo,
-              tipo,
-              duracao_minutos,
-              pontos_por_bloco,
-              quizzes!inner(
-                id,
-                titulo,
-                tipo,
-                perguntas
-              )
-            )
-          ),
-          turmas!inner(name),
-          tenants!inner(name)
+          aula_id,
+          turma_id,
+          tenant_id
         `)
         .eq('id', sessionId)
+        .eq('status', 'active')
         .single()
 
-      if (sessionError || !session) {
-        throw new Error('Sessão não encontrada')
+      console.log('📊 Sessão básica:', session)
+      console.log('❌ Erro da sessão:', sessionError)
+
+      if (sessionError) {
+        console.error('❌ Erro ao buscar sessão:', sessionError)
+        throw new Error(`Sessão não encontrada: ${sessionError.message}`)
       }
 
-      setSessionData(session as unknown as SessionData)
+      if (!session) {
+        throw new Error('Sessão não encontrada ou inativa')
+      }
+
+      // Buscar dados da aula
+      const { data: aula, error: aulaError } = await supabase
+        .from('aulas')
+        .select('titulo, descricao')
+        .eq('id', session.aula_id)
+        .single()
+
+      if (aulaError) {
+        console.error('❌ Erro ao buscar aula:', aulaError)
+        throw new Error('Aula não encontrada')
+      }
+
+      // Buscar blocos da aula
+      const { data: blocos, error: blocosError } = await supabase
+        .from('blocos')
+        .select(`
+          id,
+          numero_sequencia,
+          titulo,
+          tipo,
+          duracao_minutos,
+          pontos_por_bloco
+        `)
+        .eq('aula_id', session.aula_id)
+        .order('numero_sequencia', { ascending: true })
+
+      if (blocosError) {
+        console.error('❌ Erro ao buscar blocos:', blocosError)
+        throw new Error('Blocos não encontrados')
+      }
+
+      // Buscar turma
+      const { data: turma, error: turmaError } = await supabase
+        .from('turmas')
+        .select('name')
+        .eq('id', session.turma_id)
+        .single()
+
+      if (turmaError) {
+        console.warn('⚠️ Erro ao buscar turma:', turmaError)
+      }
+
+      // Buscar tenant
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('name')
+        .eq('id', session.tenant_id)
+        .single()
+
+      if (tenantError) {
+        console.warn('⚠️ Erro ao buscar tenant:', tenantError)
+      }
+
+      // Montar objeto de sessão completo
+      const sessionCompleta: SessionData = {
+        id: session.id,
+        status: session.status,
+        bloco_ativo_numero: session.bloco_ativo_numero,
+        aulas: {
+          titulo: aula.titulo,
+          descricao: aula.descricao,
+          blocos: blocos || []
+        },
+        turmas: {
+          name: turma?.name || 'Turma'
+        },
+        tenants: {
+          name: tenant?.name || 'Escola'
+        }
+      }
+
+      console.log('✅ Sessão carregada com sucesso:', sessionCompleta)
+      setSessionData(sessionCompleta)
       setCurrentBlock(session.bloco_ativo_numero - 1)
     } catch (err) {
+      console.error('❌ Erro ao carregar sessão:', err)
       setError(err instanceof Error ? err.message : 'Erro ao carregar sessão')
     } finally {
       setLoading(false)
@@ -129,12 +197,15 @@ export default function SessaoPage() {
   const completeQuiz = async (points: number) => {
     try {
       // Salvar resposta do quiz
+      const currentBloco = sessionData?.aulas.blocos[currentBlock]
+      const quizId = currentBloco?.quizzes?.[0]?.id
+      
       await supabase
         .from('quiz_responses')
         .insert({
           session_id: sessionId,
           aluno_id: studentData?.alunoId,
-          quiz_id: sessionData?.aulas.blocos[currentBlock]?.quizzes[0]?.id,
+          quiz_id: quizId,
           pontos_ganhos: points,
           correta: points > 0,
           tentativa_numero: 1,

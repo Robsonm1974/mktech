@@ -161,9 +161,11 @@ export default function ProfessorDashboard() {
                     </div>
                     
                     <div className="pt-3 border-t space-y-2">
-                      <Button className="w-full" size="sm">
-                        <Play className="h-4 w-4 mr-2" />
-                        Iniciar Sessão
+                      <Button asChild className="w-full" size="sm">
+                        <Link href={`/dashboard/professor/iniciar-sessao?turmaId=${turma.id}`}>
+                          <Play className="h-4 w-4 mr-2" />
+                          Iniciar Sessão
+                        </Link>
                       </Button>
                       <Button variant="outline" className="w-full" size="sm">
                         <Users className="h-4 w-4 mr-2" />
@@ -192,8 +194,10 @@ export default function ProfessorDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" size="sm">
-              Iniciar Agora
+            <Button asChild className="w-full" size="sm">
+              <Link href="/dashboard/professor/iniciar-sessao">
+                Iniciar Agora
+              </Link>
             </Button>
           </CardContent>
         </Card>

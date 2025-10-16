@@ -2,29 +2,13 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { ParallaxHero } from '@/components/layout/ParallaxHero'
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Aulas de Tecnologia que Preparam o Aluno para o Futuro!
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Pensamento computacional, programação, lógica e inglês aplicado — tudo em microlições divertidas.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button asChild size="lg" className="px-8">
-              <Link href="/auth/login">Agendar Demonstração</Link>
-            </Button>
-            <Button variant="outline" size="lg" className="px-8">
-              Falar com Especialista
-            </Button>
-          </div>
-        </div>
-      </section>
+      {/* Hero Section com Parallax Effect */}
+      <ParallaxHero />
 
       {/* Para Escolas Section */}
       <section className="container mx-auto px-4 py-16">

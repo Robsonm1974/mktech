@@ -3,3 +3,4 @@
   "auth": { "login": "Entrar", "logout": "Salir" },
   "join": { "scan": "Escanear QR", "code": "Ingresar código", "enter": "Entrar" }
 }
+

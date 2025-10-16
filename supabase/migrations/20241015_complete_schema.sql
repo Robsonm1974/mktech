@@ -297,3 +297,4 @@ BEGIN
   RAISE NOTICE '📝 Next step: Run seed data script';
 END $$;
 
+

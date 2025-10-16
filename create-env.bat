@@ -9,3 +9,4 @@ echo SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJz
 echo Arquivo .env.local criado com sucesso!
 pause
 
+
