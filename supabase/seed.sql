@@ -1,126 +1,52 @@
--- MKTECH Seed Data
+-- MKTECH Seed Data - Baseado no mktech_project_rules.md
 -- Dados iniciais para desenvolvimento
 
--- Inserir tenant de exemplo
-INSERT INTO tenants (id, slug, name, settings) VALUES (
+-- Inserir tenant de exemplo (Escola Piloto)
+INSERT INTO tenants (id, name, slug, email_admin, phone, plan_type, seats_total, seats_used, status) VALUES (
   '550e8400-e29b-41d4-a716-446655440000',
-  'escola-exemplo',
-  'Escola Exemplo',
-  '{"theme": "default", "language": "pt-BR", "features": ["quizzes", "analytics"]}'::jsonb
+  'Escola Piloto',
+  'escola-piloto',
+  'admin@escolapiloto.com.br',
+  '+55 11 99999-9999',
+  'starter',
+  50,
+  0,
+  'active'
 );
 
--- Inserir usuário admin de exemplo
-INSERT INTO users (id, email, tenant_id, role, profile) VALUES (
-  '550e8400-e29b-41d4-a716-446655440001',
-  'admin@escola-exemplo.com',
-  '550e8400-e29b-41d4-a716-446655440000',
-  'admin',
-  '{"name": "Administrador", "avatar": null}'::jsonb
-);
+-- Inserir trilhas globais (gerenciadas por MKTECH)
+INSERT INTO trilhas (id, name, descricao, disciplinas, grade_levels, sequencia, ativa) VALUES 
+  ('550e8400-e29b-41d4-a716-446655440001', 'Programação Básica', 'Introdução à programação para iniciantes', ARRAY['Programação', 'Lógica'], ARRAY['EF2-5', 'EF2-6'], 1, true),
+  ('550e8400-e29b-41d4-a716-446655440002', 'Matemática Interativa', 'Conceitos matemáticos através de jogos', ARRAY['Matemática', 'Lógica'], ARRAY['EF1-3', 'EF1-4', 'EF2-5'], 2, true),
+  ('550e8400-e29b-41d4-a716-446655440003', 'Ciências Experimentais', 'Aprendizado prático de ciências', ARRAY['Ciências', 'Experimentos'], ARRAY['EF2-6', 'EF2-7'], 3, true);
 
--- Inserir professor de exemplo
-INSERT INTO users (id, email, tenant_id, role, profile) VALUES (
-  '550e8400-e29b-41d4-a716-446655440002',
-  'professor@escola-exemplo.com',
-  '550e8400-e29b-41d4-a716-446655440000',
-  'teacher',
-  '{"name": "Professor Silva", "avatar": null}'::jsonb
-);
-
--- Inserir classe de exemplo
-INSERT INTO classes (id, tenant_id, name, grade, year, settings) VALUES (
-  '550e8400-e29b-41d4-a716-446655440003',
-  '550e8400-e29b-41d4-a716-446655440000',
-  '5º Ano A',
-  '5',
-  2025,
-  '{"capacity": 30, "schedule": "matutino"}'::jsonb
-);
-
--- Inserir alunos de exemplo
-INSERT INTO students (id, tenant_id, student_id, pin, name, class_id, profile) VALUES 
-  ('550e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440000', 'STU001', '1234', 'João Silva', '550e8400-e29b-41d4-a716-446655440003', '{"avatar": null}'::jsonb),
-  ('550e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440000', 'STU002', '5678', 'Maria Santos', '550e8400-e29b-41d4-a716-446655440003', '{"avatar": null}'::jsonb),
-  ('550e8400-e29b-41d4-a716-446655440006', '550e8400-e29b-41d4-a716-446655440000', 'STU003', '9012', 'Pedro Costa', '550e8400-e29b-41d4-a716-446655440003', '{"avatar": null}'::jsonb);
-
--- Inserir matrículas
-INSERT INTO enrollments (tenant_id, student_id, class_id, status) VALUES 
-  ('550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440003', 'active'),
-  ('550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440003', 'active'),
-  ('550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440006', '550e8400-e29b-41d4-a716-446655440003', 'active');
-
--- Inserir coleção de exemplo
-INSERT INTO collections (id, tenant_id, name, description, status, published_at, settings) VALUES (
-  '550e8400-e29b-41d4-a716-446655440007',
-  '550e8400-e29b-41d4-a716-446655440000',
-  'Matemática Básica',
-  'Trilha de aprendizado para conceitos básicos de matemática',
-  'published',
-  NOW(),
-  '{"color": "#3B82F6", "icon": "calculator"}'::jsonb
-);
-
--- Inserir aula de exemplo
-INSERT INTO lessons (id, tenant_id, collection_id, title, description, order_index, status, published_at, settings) VALUES (
-  '550e8400-e29b-41d4-a716-446655440008',
-  '550e8400-e29b-41d4-a716-446655440000',
-  '550e8400-e29b-41d4-a716-446655440007',
-  'Adição e Subtração',
-  'Aprenda os conceitos básicos de adição e subtração',
-  1,
-  'published',
-  NOW(),
-  '{"duration": 45, "difficulty": "beginner"}'::jsonb
-);
+-- Inserir aulas de exemplo
+INSERT INTO aulas (id, trilha_id, titulo, descricao, numero_sequencia, duracao_minutos, objetivos_aprendizado, disciplinas, grade_level, pontos_totais, badges_desbloqueaveis, publicada) VALUES 
+  ('550e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440001', 'Introdução aos Algoritmos', 'Aprenda o que são algoritmos e como criar os seus primeiros', 1, 45, 'Compreender conceitos básicos de algoritmos e lógica de programação', ARRAY['Programação', 'Lógica'], 'EF2-5', 50, '[{"id": "algoritmo_basico", "titulo": "Primeiro Algoritmo", "icone": "brain", "condicao": "completar_aula"}]'::jsonb, true),
+  ('550e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440002', 'Adição e Subtração', 'Operações básicas através de jogos interativos', 1, 30, 'Dominar operações de adição e subtração', ARRAY['Matemática'], 'EF1-3', 30, '[{"id": "matematica_basica", "titulo": "Calculadora", "icone": "calculator", "condicao": "acertos_100"}]'::jsonb, true);
 
 -- Inserir blocos de conteúdo
-INSERT INTO blocks (id, tenant_id, lesson_id, type, content, order_index, settings) VALUES 
-  ('550e8400-e29b-41d4-a716-446655440009', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440008', 'text', '{"title": "Introdução", "text": "Vamos aprender sobre adição e subtração!"}'::jsonb, 1, '{}'::jsonb),
-  ('550e8400-e29b-41d4-a716-446655440010', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440008', 'image', '{"url": "https://example.com/math-image.jpg", "alt": "Exemplo de adição"}'::jsonb, 2, '{}'::jsonb);
+INSERT INTO blocos (id, aula_id, numero_sequencia, titulo, tipo, descricao, duracao_minutos, conteudo_url, pontos_por_bloco) VALUES 
+  ('550e8400-e29b-41d4-a716-446655440006', '550e8400-e29b-41d4-a716-446655440004', 1, 'O que são Algoritmos?', 'video', 'Vídeo explicativo sobre algoritmos', 10, '/videos/algoritmos-intro.mp4', 10),
+  ('550e8400-e29b-41d4-a716-446655440007', '550e8400-e29b-41d4-a716-446655440004', 2, 'Exemplo Prático', 'animacao_lottie', 'Animação interativa mostrando algoritmo em ação', 5, '/animations/algoritmo-exemplo.json', 5),
+  ('550e8400-e29b-41d4-a716-446655440008', '550e8400-e29b-41d4-a716-446655440005', 1, 'Introdução às Operações', 'video', 'Vídeo sobre adição e subtração', 8, '/videos/matematica-basica.mp4', 8);
 
--- Inserir quiz de exemplo
-INSERT INTO quizzes (id, tenant_id, lesson_id, title, description, settings) VALUES (
-  '550e8400-e29b-41d4-a716-446655440011',
-  '550e8400-e29b-41d4-a716-446655440000',
-  '550e8400-e29b-41d4-a716-446655440008',
-  'Quiz de Adição',
-  'Teste seus conhecimentos sobre adição',
-  '{"time_limit": 300, "attempts": 3}'::jsonb
-);
+-- Inserir quizzes
+INSERT INTO quizzes (id, bloco_id, titulo, tipo, descricao, perguntas, tentativas_permitidas, tempo_limite_seg, pontos_max, hints) VALUES 
+  ('550e8400-e29b-41d4-a716-446655440009', '550e8400-e29b-41d4-a716-446655440006', 'Quiz: Algoritmos', 'mcq', 'Teste seus conhecimentos sobre algoritmos', '{"perguntas": [{"id": "q1", "pergunta": "O que é um algoritmo?", "opcoes": ["Uma linguagem de programação", "Uma sequência de passos para resolver um problema", "Um tipo de computador"], "correta": 1}, {"id": "q2", "pergunta": "Qual é a característica principal de um algoritmo?", "opcoes": ["Ser rápido", "Ser claro e bem definido", "Usar computador"], "correta": 1}]}'::jsonb, 2, 300, 20, '{"hints": ["Pense em receitas de bolo", "Lembre-se de instruções passo a passo"]}'::jsonb),
+  ('550e8400-e29b-41d4-a716-446655440010', '550e8400-e29b-41d4-a716-446655440008', 'Quiz: Matemática Básica', 'mcq', 'Teste suas habilidades em adição e subtração', '{"perguntas": [{"id": "q1", "pergunta": "Quanto é 5 + 3?", "opcoes": ["7", "8", "9"], "correta": 1}, {"id": "q2", "pergunta": "Quanto é 10 - 4?", "opcoes": ["5", "6", "7"], "correta": 1}]}'::jsonb, 3, 180, 15, '{"hints": ["Use os dedos para contar", "Pense em objetos reais"]}'::jsonb);
 
--- Inserir perguntas de exemplo
-INSERT INTO questions (id, tenant_id, quiz_id, question_text, question_type, correct_answer, points, order_index, settings) VALUES 
-  ('550e8400-e29b-41d4-a716-446655440012', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440011', 'Quanto é 5 + 3?', 'multiple_choice', '{"answer": "8"}'::jsonb, 1, 1, '{}'::jsonb),
-  ('550e8400-e29b-41d4-a716-446655440013', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440011', 'Quanto é 10 - 4?', 'multiple_choice', '{"answer": "6"}'::jsonb, 1, 2, '{}'::jsonb);
+-- Inserir badges globais
+INSERT INTO badges (id, titulo, descricao, tipo, condicao_tipo, condicao_valor, icon_url) VALUES 
+  ('550e8400-e29b-41d4-a716-446655440011', 'Primeiro Passo', 'Complete sua primeira aula', 'marco', 'x_aulas_completadas', 1, '/badges/primeiro-passo.png'),
+  ('550e8400-e29b-41d4-a716-446655440012', 'Perfeccionista', 'Acerte 100% das questões em uma aula', 'disciplina', 'x_acertos_100', 1, '/badges/perfeccionista.png'),
+  ('550e8400-e29b-41d4-a716-446655440013', 'Persistente', 'Complete 5 aulas', 'marco', 'x_aulas_completadas', 5, '/badges/persistente.png'),
+  ('550e8400-e29b-41d4-a716-446655440014', 'Programador', 'Complete a trilha de Programação', 'disciplina', 'trilha_completada', 1, '/badges/programador.png');
 
--- Inserir opções de resposta
-INSERT INTO options (id, tenant_id, question_id, option_text, is_correct, order_index) VALUES 
-  ('550e8400-e29b-41d4-a716-446655440014', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440012', '7', false, 1),
-  ('550e8400-e29b-41d4-a716-446655440015', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440012', '8', true, 2),
-  ('550e8400-e29b-41d4-a716-446655440016', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440012', '9', false, 3),
-  ('550e8400-e29b-41d4-a716-446655440017', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440013', '5', false, 1),
-  ('550e8400-e29b-41d4-a716-446655440018', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440013', '6', true, 2),
-  ('550e8400-e29b-41d4-a716-446655440019', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440013', '7', false, 3);
+-- Inserir H5P contents de exemplo
+INSERT INTO h5p_contents (id, titulo, library, json_data, max_score, storage_path) VALUES 
+  ('550e8400-e29b-41d4-a716-446655440015', 'Quiz Interativo: Algoritmos', 'H5P.MultiChoice', '{"question": "Qual é a melhor definição de algoritmo?", "choices": ["Um programa de computador", "Uma sequência de passos para resolver um problema", "Uma linguagem de programação"], "correct": 1}'::jsonb, 10, '/h5p/quiz-algoritmos.json');
 
--- Inserir sessão de exemplo
-INSERT INTO sessions (id, tenant_id, lesson_id, code, title, status, started_at, settings) VALUES (
-  '550e8400-e29b-41d4-a716-446655440020',
-  '550e8400-e29b-41d4-a716-446655440000',
-  '550e8400-e29b-41d4-a716-446655440008',
-  'ABC123',
-  'Aula de Matemática - 5º Ano A',
-  'active',
-  NOW(),
-  '{"qr_code": "ABC123", "allow_late_join": true}'::jsonb
-);
-
--- Inserir assinatura de exemplo
-INSERT INTO subscriptions (id, tenant_id, plan, status, started_at, ends_at, settings) VALUES (
-  '550e8400-e29b-41d4-a716-446655440021',
-  '550e8400-e29b-41d4-a716-446655440000',
-  'premium',
-  'active',
-  NOW(),
-  NOW() + INTERVAL '1 year',
-  '{"students_limit": 100, "storage_gb": 10}'::jsonb
-);
+-- Atualizar referência do quiz no bloco
+UPDATE blocos SET quiz_id = '550e8400-e29b-41d4-a716-446655440009' WHERE id = '550e8400-e29b-41d4-a716-446655440006';
+UPDATE blocos SET quiz_id = '550e8400-e29b-41d4-a716-446655440010' WHERE id = '550e8400-e29b-41d4-a716-446655440008';

@@ -1,10 +1,13 @@
+import Link from 'next/link'
+
 export default function NotFound() {
   return (
-    <html><body>
-      <main style={{ padding: 24 }}>
-        <h1>Página não encontrada</h1>
-        <p>Verifique a URL ou volte à página inicial.</p>
-      </main>
-    </body></html>
+    <main style={{ padding: 24, textAlign: 'center' }}>
+      <h1>Página não encontrada</h1>
+      <p>Verifique a URL ou volte à página inicial.</p>
+      <Link href="/" style={{ color: 'blue', textDecoration: 'underline' }}>
+        Voltar para a home
+      </Link>
+    </main>
   )
 }

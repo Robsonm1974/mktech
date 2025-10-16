@@ -14,7 +14,7 @@
     "preflight": "tsx scripts/preflight.ts",
     "setup-db": "tsx scripts/setup-database.ts",
     "mcp:filesystem": "npx @modelcontextprotocol/server-filesystem C:\\Users\\Robson\\MeusProjetos\\mkTech\\mktech",
-    "mcp:supabase": "npx @modelcontextprotocol/server-supabase --project-url https://kcvlauuzwnrfdgwlxcnw.supabase.co --api-key eyJhbGciOiJIUzI1NR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjdmxhdXV6d25yZmRnd2x4Y253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTkwNjUsImV4cCI6MjA3NjA3NTA2NX0.j_8sAw28MpoEHzV6pKF6RNfVvVwVN1MQEkXEtrQDTH4",
+    "mcp:supabase": "npx @modelcontextprotocol/server-supabase --project-url https://kcvlauuzwnrfdgwlxcnw.supabase.co --api-key eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjdmxhdXV6d25yZmRnd2x4Y253Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ5OTA2NSwiZXhwIjoyMDc2MDc1MDY1fQ.jdJwVHrGPT2TGj7uDcsUd3DwFVB2t9elpB3Fgdst6Hg",
     "mcp:test": "echo 'Testing MCP servers...' && pnpm mcp:filesystem"
   },
   "dependencies": {
@@ -38,7 +38,12 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "3.4.15",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "phaser": "^3.85.0",
+    "lottie-react": "^2.4.0",
+    "swr": "^2.2.5",
+    "qrcode": "^1.5.3",
+    "react-qr-scanner": "^1.0.0-alpha.11"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -53,6 +58,8 @@
     "eslint-config-next": "15.5.5",
     "supabase": "^2.51.0",
     "tsx": "^4.20.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@types/qrcode": "^1.5.5"
   }
 }
+

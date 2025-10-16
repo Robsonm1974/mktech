@@ -1,0 +1,11 @@
+@echo off
+echo Criando arquivo .env.local...
+(
+echo NEXT_PUBLIC_SUPABASE_URL=https://kcvlauuzwnrfdgwlxcnw.supabase.co
+echo NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjdmxhdXV6d25yZmRnd2x4Y253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTkwNjUsImV4cCI6MjA3NjA3NTA2NX0.j_8sAw28MpoEHzV6pKF6RNfVvVwVN1MQEkXEtrQDTH4
+echo NEXT_PUBLIC_APP_URL=http://localhost:3000
+echo SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjdmxhdXV6d25yZmRnd2x4Y253Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ5OTA2NSwiZXhwIjoyMDc2MDc1MDY1fQ.jdJwVHrGPT2TGj7uDcsUd3DwFVB2t9elpB3Fgdst6Hg
+) > .env.local
+echo Arquivo .env.local criado com sucesso!
+pause
+
