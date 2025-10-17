@@ -63,6 +63,7 @@ export default function SessaoPage() {
   useEffect(() => {
     loadSessionData()
     loadStudentSession()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
   const loadStudentSession = () => {

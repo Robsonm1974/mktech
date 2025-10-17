@@ -41,6 +41,7 @@ export default function MeuPerfilPage() {
 
   useEffect(() => {
     loadProfileData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadProfileData = async () => {
@@ -70,20 +71,20 @@ export default function MeuPerfilPage() {
       }
 
       // Buscar progresso
-      const { data: progress, error: progressError } = await supabase
+      const { data: progress } = await supabase
         .from('user_progress')
         .select('*')
         .eq('aluno_id', session.alunoId)
         .single()
 
       // Buscar badges conquistadas
-      const { data: badges, error: badgesError } = await supabase
+      const { data: badges } = await supabase
         .from('badges')
         .select('*')
         .in('id', progress?.badges_conquistadas || [])
 
       // Buscar ranking na turma
-      const { data: ranking, error: rankingError } = await supabase
+      const { data: ranking } = await supabase
         .from('user_progress')
         .select(`
           aluno_id,
@@ -97,7 +98,7 @@ export default function MeuPerfilPage() {
       const totalNaTurma = ranking?.length || 0
 
       // Buscar aulas recentes
-      const { data: aulas, error: aulasError } = await supabase
+      const { data: aulas } = await supabase
         .from('quiz_responses')
         .select(`
           pontos_ganhos,

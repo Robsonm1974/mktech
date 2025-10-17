@@ -220,10 +220,10 @@ export function ParallaxHero() {
       <div className="relative z-10 max-w-4xl mx-auto mt-[500px] md:mt-[550px]">
         <div className="bg-gradient-to-b from-transparent via-[#1a0b2e]/50 to-[#1a0b2e] py-8 px-4 rounded-lg backdrop-blur-sm">
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 md:mb-6 drop-shadow-lg">
-            Aulas de Tecnologia que Preparam o Aluno para o Futuro!
+            Aulas de Tecnologia <br /> Preparando o Aluno para o Futuro!
           </h1>
           <p className="text-base md:text-xl text-gray-200 mb-6 md:mb-8 drop-shadow-md">
-            Pensamento computacional, programação, lógica e inglês aplicado — tudo em microlições divertidas.
+            Programação, lógica, inglês e matemática aplicada — tudo em microlições divertidas.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="px-8 bg-blue-600 hover:bg-blue-700">
