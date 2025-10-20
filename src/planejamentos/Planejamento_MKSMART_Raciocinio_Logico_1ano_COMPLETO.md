@@ -3,7 +3,7 @@
 # Planejamento MKSMART — Raciocínio Lógico
 **Título do Planejamento:** Raciocínio Lógico 1º ano
 **Disciplina:** Raciocínio Lógico
-**Turma:** EF1 
+**Ano:** EF1 
 **Código Base:** ALG-1
 **Total de Blocos:** 30  
 **Pontos Totais:** 300 

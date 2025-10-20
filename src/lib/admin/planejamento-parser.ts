@@ -5,7 +5,7 @@
 export interface ParsedMetadata {
   titulo: string
   disciplina: string
-  turma: string
+  ano_escolar_id: string // EF1, EF2, ... EF9
   codigoBase: string
   numBlocos: number
   pontosTotais: number
@@ -45,8 +45,8 @@ function extrairMetadados(documento: string): ParsedMetadata {
   const disciplinaMatch = documento.match(/\*\*Disciplina:\*\*\s*(.+)/i)
   if (disciplinaMatch?.[1]) metadados.disciplina = disciplinaMatch[1].trim()
   
-  const turmaMatch = documento.match(/\*\*Turma:\*\*\s*(.+)/i)
-  if (turmaMatch?.[1]) metadados.turma = turmaMatch[1].trim()
+  const anoMatch = documento.match(/\*\*Ano:\*\*\s*(.+)/i)
+  if (anoMatch?.[1]) metadados.ano_escolar_id = anoMatch[1].trim()
   
   const codigoMatch = documento.match(/\*\*Código Base:\*\*\s*(.+)/i)
   if (codigoMatch?.[1]) metadados.codigoBase = codigoMatch[1].trim()
@@ -66,7 +66,7 @@ function extrairMetadados(documento: string): ParsedMetadata {
   // Validar campos obrigatórios
   if (!metadados.titulo) throw new Error('Título do Planejamento não encontrado')
   if (!metadados.disciplina) throw new Error('Disciplina não encontrada')
-  if (!metadados.turma) throw new Error('Turma não encontrada')
+  if (!metadados.ano_escolar_id) throw new Error('Ano Escolar não encontrado')
   if (!metadados.codigoBase) throw new Error('Código Base não encontrado')
   if (!metadados.numBlocos) throw new Error('Total de Blocos não encontrado')
   if (!metadados.pontosTotais) throw new Error('Pontos Totais não encontrados')
@@ -201,8 +201,8 @@ export function validarEstruturaPlanejamento(documento: string): {
   if (!documento.includes('**Disciplina:**')) {
     erros.push('Falta campo: Disciplina')
   }
-  if (!documento.includes('**Turma:**')) {
-    erros.push('Falta campo: Turma')
+  if (!documento.includes('**Ano:**')) {
+    erros.push('Falta campo: Ano')
   }
   if (!documento.includes('**Código Base:**')) {
     erros.push('Falta campo: Código Base')

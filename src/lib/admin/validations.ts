@@ -7,13 +7,14 @@ import { z } from 'zod'
 // Planejamento Import Schema
 export const importPlanejamentoSchema = z.object({
   disciplina_id: z.string().uuid('ID de disciplina inválido'),
-  turma: z.string().min(1, 'Turma é obrigatória').regex(/^EF[12]-[1-9]$/, 'Formato inválido (ex: EF2-5)'),
+  ano_escolar_id: z.string().min(1, 'Ano Escolar é obrigatório').regex(/^EF[1-9]$/, 'Formato inválido (ex: EF1, EF2, ... EF9)'),
   titulo: z.string().min(3, 'Título deve ter pelo menos 3 caracteres').max(255),
   documento_md: z.string().min(10, 'Documento deve ter pelo menos 10 caracteres'),
   num_blocos: z.number().int().min(1).max(100),
   pontos_totais: z.number().int().min(1),
   pontos_por_quiz: z.number().int().min(1),
-  codigo_base: z.string().min(1, 'Código base é obrigatório').max(20)
+  codigo_base: z.string().min(1, 'Código base é obrigatório').max(20),
+  substituir_existentes: z.boolean().optional()
 })
 
 export type ImportPlanejamentoInput = z.infer<typeof importPlanejamentoSchema>

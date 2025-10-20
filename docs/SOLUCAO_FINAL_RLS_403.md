@@ -189,3 +189,4 @@ const { data } = await supabase.rpc('get_all_disciplinas')
 **Execute o SQL nuclear e me avise o resultado!** 🚀
 
 
+

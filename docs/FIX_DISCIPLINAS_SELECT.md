@@ -71,3 +71,4 @@ Isso permite diagnosticar se o problema é RLS ou dados ausentes.
 **Próximos Passos:** Execute a migration RLS e teste novamente!
 
 
+

@@ -13,10 +13,23 @@ import { parsearDocumentoPlanejamento, validarEstruturaPlanejamento, type Parsed
 import type { Disciplina } from '@/types/admin'
 import { toast } from 'sonner'
 
+interface AnoEscolar {
+  id: string
+  nome: string
+  idade_referencia: number
+  ordem: number
+}
+
+interface RpcPlanejamentoResult {
+  success: boolean
+  planejamento_id: string
+  message: string
+}
+
 export default function ImportarPlanejamentoPage() {
   const [form, setForm] = useState({
     disciplina_id: '',
-    turma: '',
+    ano_escolar_id: '',
     titulo: '',
     documento_md: '',
     num_blocos: 30,
@@ -26,9 +39,11 @@ export default function ImportarPlanejamentoPage() {
     substituir_existentes: false
   })
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
+  const [anosEscolares, setAnosEscolares] = useState<AnoEscolar[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(true)
+  const [loadingAnos, setLoadingAnos] = useState(true)
   const [parsedData, setParsedData] = useState<ParsedDocument | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const router = useRouter()
@@ -36,6 +51,7 @@ export default function ImportarPlanejamentoPage() {
 
   useEffect(() => {
     checkSessionAndLoadDisciplinas()
+    loadAnosEscolares()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -98,6 +114,30 @@ export default function ImportarPlanejamentoPage() {
     }
   }
 
+  const loadAnosEscolares = async () => {
+    console.log('📚 Carregando anos escolares...')
+    
+    try {
+      const { data, error } = await supabase.rpc('get_anos_escolares')
+      
+      if (error) {
+        console.error('❌ Erro ao carregar anos escolares:', error)
+        toast.error('Erro ao carregar anos escolares')
+        return
+      }
+      
+      if (data && data.length > 0) {
+        console.log('✅ Anos escolares carregados:', data.length)
+        setAnosEscolares(data)
+      }
+    } catch (err) {
+      console.error('💥 Exceção ao carregar anos escolares:', err)
+      toast.error('Erro ao carregar anos escolares')
+    } finally {
+      setLoadingAnos(false)
+    }
+  }
+
   // Parsear documento e preencher form automaticamente
   const handleParsearDocumento = () => {
     if (!form.documento_md.trim()) {
@@ -122,7 +162,7 @@ export default function ImportarPlanejamentoPage() {
       setForm(prev => ({
         ...prev,
         titulo: parsed.metadados.titulo,
-        turma: parsed.metadados.turma,
+        ano_escolar_id: parsed.metadados.ano_escolar_id,
         codigo_base: parsed.metadados.codigoBase,
         num_blocos: parsed.metadados.numBlocos,
         pontos_totais: parsed.metadados.pontosTotais,
@@ -168,6 +208,7 @@ export default function ImportarPlanejamentoPage() {
     planejamentoId: string,
     codigoBase: string,
     disciplinaId: string,
+    anoEscolarId: string,
     pontosPorQuiz: number,
     substituirExistentes: boolean = false
   ) => {
@@ -210,6 +251,7 @@ export default function ImportarPlanejamentoPage() {
     const blocosData = parsedData.blocos.map((bloco) => ({
       planejamento_id: planejamentoId,
       disciplina_id: disciplinaId,
+      ano_escolar_id: anoEscolarId,
       codigo_bloco: `${codigoBase}-${bloco.numero}`,
       numero_sequencia: bloco.numero,
       titulo: bloco.titulo,
@@ -360,9 +402,9 @@ export default function ImportarPlanejamentoPage() {
       console.log('📝 Iniciando inserção de planejamento via RPC...')
       
       // 1. Inserir planejamento via RPC
-      const rpcPromise = supabase.rpc('insert_planejamento_admin', {
+      const { data: rpcResult, error: planError } = await supabase.rpc('insert_planejamento_admin', {
         p_disciplina_id: form.disciplina_id,
-        p_turma: form.turma,
+        p_ano_escolar_id: form.ano_escolar_id,
         p_titulo: form.titulo,
         p_documento_md: form.documento_md,
         p_num_blocos: form.num_blocos,
@@ -370,40 +412,35 @@ export default function ImportarPlanejamentoPage() {
         p_pontos_por_quiz: form.pontos_por_quiz,
         p_codigo_base: form.codigo_base,
         p_status: 'processado'
-      })
+      }) as { data: RpcPlanejamentoResult | null, error: Error | null }
 
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout: RPC demorou mais de 30 segundos')), 30000)
-      )
+      console.log('📝 Resposta do RPC insert_planejamento_admin:', { rpcResult, planError })
 
-      console.log('📝 Aguardando resposta do RPC...')
-      const { data: planejamento, error: planError } = await Promise.race([
-        rpcPromise,
-        timeoutPromise
-      ]) as { data: { id: string }[] | null, error: Error | null }
-
-      if (planError || !planejamento || planejamento.length === 0) {
+      if (planError) {
         console.error('❌ Erro ao criar planejamento:', planError)
-        setErrors({ submit: planError?.message || 'Erro ao criar planejamento' })
+        setErrors({ submit: planError.message || 'Erro ao criar planejamento' })
         setLoading(false)
         return
       }
 
-      const planejamentoData = Array.isArray(planejamento) ? planejamento[0] : planejamento
-      
-      if (!planejamentoData?.id) {
-        setErrors({ submit: 'Erro: planejamento criado mas sem ID retornado' })
+      // RPC retorna JSONB: { success: true, planejamento_id: uuid, message: string }
+      if (!rpcResult || !rpcResult.success || !rpcResult.planejamento_id) {
+        const errorMsg = rpcResult?.message || 'Erro ao criar planejamento: resposta inválida'
+        console.error('❌ Resposta inválida do RPC:', rpcResult)
+        setErrors({ submit: errorMsg })
         setLoading(false)
         return
       }
-      
-      console.log('✅ Planejamento criado:', planejamentoData.id)
+
+      const planejamentoId = rpcResult.planejamento_id
+      console.log('✅ Planejamento criado:', planejamentoId)
 
       // 2. Criar blocos com parsing
       const { error: blocosError } = await parsearECriarBlocos(
-        planejamentoData.id,
+        planejamentoId,
         form.codigo_base,
         form.disciplina_id,
+        form.ano_escolar_id,
         form.pontos_por_quiz,
         form.substituir_existentes
       )
@@ -510,8 +547,8 @@ export default function ImportarPlanejamentoPage() {
                   <p className="text-blue-900">{parsedData.metadados.disciplina}</p>
                 </div>
                 <div>
-                  <span className="text-blue-700 font-medium">Turma:</span>
-                  <p className="text-blue-900">{parsedData.metadados.turma}</p>
+                  <span className="text-blue-700 font-medium">Ano:</span>
+                  <p className="text-blue-900">{parsedData.metadados.ano_escolar_id}</p>
                 </div>
                 <div>
                   <span className="text-blue-700 font-medium">Código Base:</span>
@@ -593,20 +630,28 @@ export default function ImportarPlanejamentoPage() {
             </div>
 
             <div>
-              <label htmlFor="turma" className="block text-sm font-medium text-slate-700 mb-1">
-                Turma *
+              <label htmlFor="ano_escolar_id" className="block text-sm font-medium text-slate-700 mb-1">
+                Ano Escolar *
               </label>
-              <Input
-                id="turma"
-                type="text"
-                value={form.turma}
-                onChange={(e) => setForm({ ...form, turma: e.target.value })}
+              <select
+                id="ano_escolar_id"
+                value={form.ano_escolar_id}
+                onChange={(e) => setForm({ ...form, ano_escolar_id: e.target.value })}
                 required
-                disabled={loading}
-                placeholder="Ex: EF2-5"
-              />
-              <p className="text-xs text-slate-500 mt-1">Formato: EF1-3, EF2-5, etc.</p>
-              {errors.turma && <p className="text-sm text-red-600 mt-1">{errors.turma}</p>}
+                disabled={loading || loadingAnos}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">
+                  {loadingAnos ? 'Carregando...' : anosEscolares.length === 0 ? 'Nenhum ano encontrado' : 'Selecione o ano...'}
+                </option>
+                {anosEscolares.map((ano) => (
+                  <option key={ano.id} value={ano.id}>
+                    {ano.nome} ({ano.idade_referencia} anos)
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Ex: 1º Ano, 2º Ano... até 9º Ano</p>
+              {errors.ano_escolar_id && <p className="text-sm text-red-600 mt-1">{errors.ano_escolar_id}</p>}
             </div>
 
             <div>

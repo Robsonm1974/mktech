@@ -1,8 +1,8 @@
 # Planejamento MKSMART — Algoritmos
 **Título do Planejamento:** Introdução aos Algoritmos — 1º Ano
 **Disciplina:** Algoritmos
-**Turma:** EF1-1
-**Código Base:** AXG-1
+**Ano:** EF1
+**Código Base:** ALG-1
 **Total de Blocos:** 5
 **Pontos Totais:** 300
 **Pontos por Quiz:** 10

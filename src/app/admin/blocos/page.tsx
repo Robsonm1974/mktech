@@ -3,9 +3,16 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client-browser'
 import { Button } from '@/components/ui/button'
-import { Upload, RefreshCw, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { RefreshCw, Loader2, BookOpen, Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import BlocosGroupedList from '@/components/admin/blocos/BlocosGroupedList'
+
+interface AnoEscolar {
+  id: string
+  nome: string
+  idade_referencia: number
+  ordem: number
+}
 
 interface BlocoWithRelations {
   id: string
@@ -15,6 +22,7 @@ interface BlocoWithRelations {
   pontos_bloco: number
   tipo_midia: string | null
   quiz_id: string | null
+  ano_escolar_id: string | null
   disciplinas: {
     codigo: string
     nome: string
@@ -22,21 +30,59 @@ interface BlocoWithRelations {
     icone: string | null
   } | null
   planejamentos: {
-    turma: string
+    ano_escolar_id: string | null
     codigo_base: string | null
   } | null
 }
 
+interface Disciplina {
+  nome: string
+  codigo: string
+  cor_hex: string
+  icone: string
+  blocos: BlocoWithRelations[]
+}
+
+interface AnoGroup {
+  [disciplinaNome: string]: Disciplina
+}
+
 export default function BlocosPage() {
+  const router = useRouter()
+  const [anosEscolares, setAnosEscolares] = useState<AnoEscolar[]>([])
   const [blocos, setBlocos] = useState<BlocoWithRelations[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingAnos, setLoadingAnos] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'anos' | 'lista'>('anos')
+  const [filtroAno, setFiltroAno] = useState<string | null>(null)
   const supabase = createSupabaseBrowserClient()
 
   useEffect(() => {
+    loadAnosEscolares()
     loadBlocos()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const loadAnosEscolares = async () => {
+    setLoadingAnos(true)
+    try {
+      const { data, error: rpcError } = await supabase.rpc('get_anos_escolares')
+      
+      if (rpcError) {
+        console.error('❌ Erro ao carregar anos:', rpcError.message)
+        setAnosEscolares([])
+      } else if (data) {
+        setAnosEscolares(data)
+        console.log('✅ Anos carregados:', data.length)
+      }
+    } catch (err) {
+      console.error('💥 Exceção ao carregar anos:', err)
+      setAnosEscolares([])
+    } finally {
+      setLoadingAnos(false)
+    }
+  }
 
   const loadBlocos = async () => {
     console.log('📦 Carregando blocos via RPC...')
@@ -44,54 +90,32 @@ export default function BlocosPage() {
     setError(null)
     
     try {
-      // Usar RPC para bypass RLS
       const { data, error: rpcError } = await supabase.rpc('get_blocos_with_relations_admin')
       
-      console.log('📦 RPC get_blocos_with_relations_admin - Resposta completa:', { 
-        hasData: !!data, 
-        dataType: typeof data,
-        dataIsArray: Array.isArray(data),
-        dataValue: data,
-        hasError: !!rpcError,
-        errorCode: rpcError?.code,
-        errorMessage: rpcError?.message,
-        errorDetails: rpcError?.details,
-        fullError: rpcError
-      })
-      
-      // Se houver erro, mas for um erro vazio, pode ser que a função não exista
       if (rpcError) {
         const errorMsg = rpcError.message || 'Erro desconhecido ao carregar blocos'
         console.error('❌ Erro RPC:', errorMsg)
-        
-        if (!rpcError.message && !rpcError.code) {
-          setError('A função RPC pode não existir. Execute: supabase/migrations/FIX_GET_BLOCOS_RPC.sql')
-        } else {
-          setError(`Erro ao carregar blocos: ${errorMsg}`)
-        }
+        setError(`Erro ao carregar blocos: ${errorMsg}`)
         setBlocos([])
         setLoading(false)
         return
       }
       
-      // Processar dados
       if (data !== null && data !== undefined) {
         let blocosArray: BlocoWithRelations[] = []
         
-        // A função retorna JSONB, pode vir como array ou string
         if (Array.isArray(data)) {
           blocosArray = data
         } else if (typeof data === 'string') {
           blocosArray = JSON.parse(data)
         } else if (typeof data === 'object') {
-          // Pode ser um objeto JSONB que precisa ser convertido
           blocosArray = Object.values(data)
         }
         
         console.log('✅ Blocos processados:', blocosArray.length)
         setBlocos(blocosArray)
       } else {
-        console.log('⚠️ Nenhum dado retornado (null/undefined)')
+        console.log('⚠️ Nenhum dado retornado')
         setBlocos([])
       }
     } catch (err) {
@@ -103,74 +127,193 @@ export default function BlocosPage() {
     }
   }
 
+  // Agrupar blocos por Ano → Disciplina
+  const groupedByAno: Record<string, AnoGroup> = {}
+  
+  blocos.forEach((bloco) => {
+    const anoId = bloco.planejamentos?.ano_escolar_id || bloco.ano_escolar_id || 'Sem Ano'
+    const disciplinaNome = bloco.disciplinas?.nome || 'Sem Disciplina'
+    const disciplinaCodigo = bloco.disciplinas?.codigo || 'SEM-COD'
+    const disciplinaCor = bloco.disciplinas?.cor_hex || '#3B82F6'
+    const disciplinaIcone = bloco.disciplinas?.icone || '📘'
+
+    if (!groupedByAno[anoId]) {
+      groupedByAno[anoId] = {}
+    }
+
+    if (!groupedByAno[anoId][disciplinaNome]) {
+      groupedByAno[anoId][disciplinaNome] = {
+        nome: disciplinaNome,
+        codigo: disciplinaCodigo,
+        cor_hex: disciplinaCor,
+        icone: disciplinaIcone,
+        blocos: []
+      }
+    }
+
+    groupedByAno[anoId][disciplinaNome].blocos.push(bloco)
+  })
+
+  // Contar blocos por ano
+  const blocosCountByAno: Record<string, number> = {}
+  anosEscolares.forEach(ano => {
+    const anoGroup = groupedByAno[ano.id]
+    blocosCountByAno[ano.id] = anoGroup 
+      ? Object.values(anoGroup).reduce((sum, disc) => sum + disc.blocos.length, 0)
+      : 0
+  })
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Fábrica de Blocos</h1>
-          <p className="text-slate-600 mt-1">Gerencie blocos de conteúdo reutilizáveis</p>
+          <p className="text-slate-600 mt-1">
+            {viewMode === 'anos' 
+              ? 'Organize por ano escolar e disciplina'
+              : 'Lista completa de blocos'}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={loadBlocos}
+            onClick={async () => {
+              await Promise.all([loadAnosEscolares(), loadBlocos()])
+            }}
+            disabled={loading || loadingAnos}
+          >
+            {(loading || loadingAnos) ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Carregando...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant={viewMode === 'anos' ? 'default' : 'outline'}
+            onClick={() => setViewMode('anos')}
             disabled={loading}
           >
-            {loading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            Recarregar
+            Por Ano
           </Button>
-          <Link href="/admin/blocos/importar">
-            <Button>
-              <Upload className="h-4 w-4 mr-2" />
-              Importar Planejamento
-            </Button>
-          </Link>
+
+          <Button
+            variant={viewMode === 'lista' ? 'default' : 'outline'}
+            onClick={() => {
+              setFiltroAno(null)
+              setViewMode('lista')
+            }}
+            disabled={loading}
+          >
+            Lista Completa
+          </Button>
         </div>
       </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h3 className="text-red-800 font-semibold mb-2">⚠️ Erro ao carregar blocos</h3>
-          <p className="text-red-600 text-sm mb-3">{error}</p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={loadBlocos}>
-              Tentar novamente
-            </Button>
-            <Link href="/admin/blocos/importar">
-              <Button size="sm">Importar Planejamento</Button>
-            </Link>
-          </div>
+          <p className="text-red-800">{error}</p>
         </div>
       )}
 
-      {loading ? (
-        <div className="space-y-4">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} className="h-64 bg-slate-200 rounded animate-pulse" />
-          ))}
+      {(loading || loadingAnos) ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
-      ) : !error && blocos.length === 0 ? (
-        <div className="text-center p-12 border-2 border-dashed border-slate-300 rounded-lg bg-slate-50">
-          <Upload className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-          <h3 className="text-lg font-semibold text-slate-700 mb-2">
-            Nenhum bloco criado ainda
-          </h3>
-          <p className="text-slate-600 mb-4">
-            Comece importando um planejamento para gerar seus primeiros blocos.
-          </p>
-          <Link href="/admin/blocos/importar">
-            <Button>
-              <Upload className="h-4 w-4 mr-2" />
-              Importar Planejamento
-            </Button>
-          </Link>
+      ) : viewMode === 'anos' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {anosEscolares.map((ano) => {
+            const totalBlocos = blocosCountByAno[ano.id] || 0
+            
+            return (
+              <div
+                key={ano.id}
+                className="bg-white rounded-lg border-2 border-slate-200 p-6 hover:border-blue-400 transition-all duration-200 hover:shadow-lg"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                      <BookOpen className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{ano.nome}</h3>
+                      <p className="text-sm text-slate-500">{ano.idade_referencia} anos</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">Blocos criados:</span>
+                    <span className="font-bold text-slate-900">{totalBlocos}</span>
+                  </div>
+                  
+                  {groupedByAno[ano.id] && (
+                    <div className="text-xs text-slate-500">
+                      {Object.keys(groupedByAno[ano.id] || {}).length} disciplina(s)
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => router.push(`/admin/blocos/importar?ano=${ano.id}`)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Importar Planejamento
+                  </Button>
+                  
+                  {totalBlocos > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFiltroAno(ano.id)
+                        setViewMode('lista')
+                      }}
+                    >
+                      Ver Blocos
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       ) : (
-        <BlocosGroupedList initialBlocos={blocos} />
+        <>
+          {filtroAno && (
+            <div className="flex items-center gap-2 mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFiltroAno(null)
+                  setViewMode('anos')
+                }}
+              >
+                ← Voltar para Anos
+              </Button>
+              <span className="text-sm text-slate-600">
+                Mostrando blocos do: {anosEscolares.find(a => a.id === filtroAno)?.nome || filtroAno}
+              </span>
+            </div>
+          )}
+          <BlocosGroupedList 
+            initialBlocos={filtroAno ? blocos.filter(b => 
+              b.planejamentos?.ano_escolar_id === filtroAno || b.ano_escolar_id === filtroAno
+            ) : blocos} 
+          />
+        </>
       )}
     </div>
   )

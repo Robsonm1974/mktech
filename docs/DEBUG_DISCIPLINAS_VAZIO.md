@@ -110,3 +110,4 @@ Se após executar o diagnóstico e as migrations você ainda tiver problemas:
 **Execute o diagnóstico e me avise o que encontrou!** 🚀
 
 
+

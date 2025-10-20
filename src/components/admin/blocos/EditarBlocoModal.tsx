@@ -155,56 +155,22 @@ export default function EditarBlocoModal({ blocoId, isOpen, onClose, onSave }: E
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="modal-pontos" className="block text-sm font-medium text-slate-700 mb-1">
-                  Pontos do Bloco
-                </label>
-                <Input
-                  id="modal-pontos"
-                  type="number"
-                  min="0"
-                  value={form.pontos_bloco}
-                  onChange={(e) => setForm({ ...form, pontos_bloco: parseInt(e.target.value) || 0 })}
-                  disabled={saving}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="modal-tipo-midia" className="block text-sm font-medium text-slate-700 mb-1">
-                  Tipo de Mídia
-                </label>
-                <select
-                  id="modal-tipo-midia"
-                  value={form.tipo_midia}
-                  onChange={(e) => setForm({ ...form, tipo_midia: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={saving}
-                >
-                  <option value="">Nenhuma</option>
-                  <option value="video">Vídeo</option>
-                  <option value="lottie">Lottie Animation</option>
-                  <option value="phaser">Jogo Phaser</option>
-                  <option value="h5p">H5P</option>
-                </select>
-              </div>
+            <div>
+              <label htmlFor="modal-pontos" className="block text-sm font-medium text-slate-700 mb-1">
+                Pontos do Bloco
+              </label>
+              <Input
+                id="modal-pontos"
+                type="number"
+                min="0"
+                value={form.pontos_bloco}
+                onChange={(e) => setForm({ ...form, pontos_bloco: parseInt(e.target.value) || 0 })}
+                disabled={saving}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Use o botão &quot;Mídia&quot; na lista de blocos para configurar vídeos/animações
+              </p>
             </div>
-
-            {form.tipo_midia && (
-              <div>
-                <label htmlFor="modal-midia-url" className="block text-sm font-medium text-slate-700 mb-1">
-                  URL da Mídia
-                </label>
-                <Input
-                  id="modal-midia-url"
-                  type="url"
-                  value={form.midia_url}
-                  onChange={(e) => setForm({ ...form, midia_url: e.target.value })}
-                  placeholder="https://..."
-                  disabled={saving}
-                />
-              </div>
-            )}
 
             <div className="flex gap-3 pt-4 border-t">
               <Button onClick={handleSave} disabled={saving} className="flex-1">

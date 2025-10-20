@@ -47,6 +47,9 @@ importers:
       lottie-react:
         specifier: ^2.4.0
         version: 2.4.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      lottie-web:
+        specifier: ^5.13.0
+        version: 5.13.0
       lucide-react:
         specifier: ^0.545.0
         version: 0.545.0(react@19.1.0)
