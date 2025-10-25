@@ -85,7 +85,10 @@ export default function ConfigurarMidiaModal({
   }
 
   const handleSave = async () => {
-    if (!blocoId) return
+    if (!blocoId) {
+      console.error('❌ blocoId não encontrado')
+      return
+    }
 
     // Validações
     if (!form.tipo_midia) {
@@ -100,26 +103,37 @@ export default function ConfigurarMidiaModal({
 
     try {
       setSaving(true)
+      
+      console.log('🔄 Salvando mídia...', {
+        blocoId,
+        tipo_midia: form.tipo_midia,
+        midia_url: form.midia_url
+      })
 
-      // Atualizar bloco
-      const { error } = await supabase
+      // Atualizar bloco (sem updated_at para evitar erro se não existir)
+      const { data, error } = await supabase
         .from('blocos_templates')
         .update({
           tipo_midia: form.tipo_midia,
           midia_url: form.midia_url,
-          status: 'com_midia',
-          updated_at: new Date().toISOString()
+          status: 'com_midia'
         })
         .eq('id', blocoId)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Erro do Supabase:', error)
+        throw error
+      }
 
+      console.log('✅ Mídia salva com sucesso:', data)
       toast.success('Mídia configurada com sucesso!')
       onSave?.()
       onClose()
     } catch (error) {
-      console.error('Erro ao salvar:', error)
-      toast.error('Erro ao configurar mídia')
+      console.error('❌ Erro ao salvar:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      toast.error(`Erro ao configurar mídia: ${errorMessage}`)
     } finally {
       setSaving(false)
     }

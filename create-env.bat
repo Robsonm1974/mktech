@@ -10,3 +10,5 @@ echo Arquivo .env.local criado com sucesso!
 pause
 
 
+
+

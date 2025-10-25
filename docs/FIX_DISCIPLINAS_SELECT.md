@@ -72,3 +72,8 @@ Isso permite diagnosticar se o problema é RLS ou dados ausentes.
 
 
 
+
+
+
+
+

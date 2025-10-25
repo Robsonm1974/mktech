@@ -13,6 +13,7 @@ import QRCode from 'qrcode'
 interface Session {
   id: string
   session_code: string
+  turma_id: string
   session_qr_data: {
     sessionId: string
     aulaId: string
@@ -30,9 +31,21 @@ interface Session {
     pontos_totais: number
   }
   turmas: {
+    id: string
     name: string
     grade_level: string
   }
+}
+
+interface AlunoSessao {
+  aluno_id: string
+  aluno_nome: string
+  bloco_atual: number
+  blocos_completados: number
+  total_blocos: number
+  pontos_ganhos: number
+  status: string
+  ultima_atividade: string
 }
 
 export default function SessionDashboardPage() {
@@ -46,6 +59,10 @@ export default function SessionDashboardPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
   const [loadingSession, setLoadingSession] = useState(true)
   const [alunosConectados, setAlunosConectados] = useState<number>(0)
+  const [alunosSessao, setAlunosSessao] = useState<AlunoSessao[]>([])
+  const [loadingAlunos, setLoadingAlunos] = useState(false)
+  const [alunosTurma, setAlunosTurma] = useState<Array<{ id: string; full_name: string; pin_code: string; icone_afinidade: string }>>([])
+  const [loadingAlunosTurma, setLoadingAlunosTurma] = useState(false)
 
   // Carregar dados da sessão
   useEffect(() => {
@@ -63,6 +80,7 @@ export default function SessionDashboardPage() {
             status,
             data_inicio,
             alunos_participantes,
+            turma_id,
             aulas (
               titulo,
               descricao,
@@ -70,6 +88,7 @@ export default function SessionDashboardPage() {
               pontos_totais
             ),
             turmas (
+              id,
               name,
               grade_level
             )
@@ -165,25 +184,97 @@ export default function SessionDashboardPage() {
     }
   }, [sessionId, supabase])
 
+  // Carregar lista de alunos e progresso
+  useEffect(() => {
+    const loadAlunos = async () => {
+      if (!sessionId) return
+
+      setLoadingAlunos(true)
+      try {
+        const { data, error } = await supabase.rpc('get_alunos_sessao', {
+          p_session_id: sessionId
+        })
+
+        if (error) {
+          console.error('Erro ao carregar alunos:', error)
+          return
+        }
+
+        setAlunosSessao(data || [])
+      } catch (error) {
+        console.error('Erro:', error)
+      } finally {
+        setLoadingAlunos(false)
+      }
+    }
+
+    loadAlunos()
+    
+    // Atualizar a cada 5 segundos
+    const interval = setInterval(loadAlunos, 5000)
+    
+    return () => clearInterval(interval)
+  }, [sessionId, supabase])
+
+  // Carregar alunos da turma (lista completa com PINs)
+  useEffect(() => {
+    const loadAlunosTurma = async () => {
+      if (!session?.turma_id) return
+
+      setLoadingAlunosTurma(true)
+      try {
+        const { data, error } = await supabase
+          .from('alunos')
+          .select('id, full_name, pin_code, icone_afinidade')
+          .eq('turma_id', session.turma_id)
+          .eq('active', true)
+          .order('full_name')
+
+        if (error) {
+          console.error('Erro ao carregar alunos da turma:', error)
+          return
+        }
+
+        setAlunosTurma(data || [])
+        console.log('✅ Alunos da turma carregados:', data?.length)
+      } catch (error) {
+        console.error('Erro:', error)
+      } finally {
+        setLoadingAlunosTurma(false)
+      }
+    }
+
+    if (session) {
+      loadAlunosTurma()
+    }
+  }, [session, supabase])
+
   const handleEncerrarSessao = async () => {
-    if (!confirm('Deseja realmente encerrar esta sessão?')) return
+    if (!confirm('Deseja realmente encerrar esta sessão?\n\nIsso encerrará a sessão para todos os alunos.')) return
 
     try {
-      const { error } = await supabase
-        .from('sessions')
-        .update({
-          status: 'completed',
-          data_fim: new Date().toISOString()
-        })
-        .eq('id', sessionId)
+      // Usar RPC dedicado
+      const { data, error } = await supabase.rpc('encerrar_sessao', {
+        p_session_id: sessionId
+      })
 
       if (error) {
         console.error('Erro ao encerrar sessão:', error)
-        alert('Erro ao encerrar sessão')
+        alert('Erro ao encerrar sessão: ' + error.message)
         return
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = data as any
+
+      if (!result.success) {
+        alert('Erro: ' + result.message)
+        return
+      }
+
+      alert(`Sessão encerrada com sucesso!\n${result.total_participacoes} aluno(s) participaram.`)
       router.push('/dashboard/professor')
+      
     } catch (error) {
       console.error('Erro:', error)
       alert('Erro ao encerrar sessão')
@@ -241,16 +332,10 @@ export default function SessionDashboardPage() {
               {session.aulas.titulo} - {session.turmas.name}
             </p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" size="sm">
-              <Play className="h-4 w-4 mr-2" />
-              Pausar
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleEncerrarSessao}>
-              <XCircle className="h-4 w-4 mr-2" />
-              Encerrar Sessão
-            </Button>
-          </div>
+          <Button variant="destructive" size="sm" onClick={handleEncerrarSessao}>
+            <XCircle className="h-4 w-4 mr-2" />
+            Encerrar Sessão
+          </Button>
         </div>
       </div>
 
@@ -290,6 +375,66 @@ export default function SessionDashboardPage() {
                   Acesse: mktech.app/entrar
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Lista de Alunos da Turma */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Lista de Alunos</CardTitle>
+              <CardDescription className="text-xs">
+                Ajude os alunos com nome, ícone e PIN
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="max-h-96 overflow-y-auto">
+              {loadingAlunosTurma ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                </div>
+              ) : alunosTurma.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">Nenhum aluno cadastrado</p>
+              ) : (
+                <div className="space-y-2">
+                  {alunosTurma.map((aluno) => (
+                    <div 
+                      key={aluno.id}
+                      className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg border"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg">
+                          {aluno.icone_afinidade === 'dog' && '🐶'}
+                          {aluno.icone_afinidade === 'cat' && '🐱'}
+                          {aluno.icone_afinidade === 'lion' && '🦁'}
+                          {aluno.icone_afinidade === 'tiger' && '🐯'}
+                          {aluno.icone_afinidade === 'bear' && '🐻'}
+                          {aluno.icone_afinidade === 'panda' && '🐼'}
+                          {aluno.icone_afinidade === 'koala' && '🐨'}
+                          {aluno.icone_afinidade === 'fox' && '🦊'}
+                          {aluno.icone_afinidade === 'rabbit' && '🐰'}
+                          {aluno.icone_afinidade === 'frog' && '🐸'}
+                          {aluno.icone_afinidade === 'monkey' && '🐵'}
+                          {aluno.icone_afinidade === 'pig' && '🐷'}
+                          {aluno.icone_afinidade === 'cow' && '🐮'}
+                          {aluno.icone_afinidade === 'horse' && '🐴'}
+                          {aluno.icone_afinidade === 'unicorn' && '🦄'}
+                          {aluno.icone_afinidade === 'dragon' && '🐉'}
+                          {aluno.icone_afinidade === 'dinosaur' && '🦕'}
+                          {aluno.icone_afinidade === 'whale' && '🐋'}
+                          {aluno.icone_afinidade === 'dolphin' && '🐬'}
+                          {aluno.icone_afinidade === 'shark' && '🦈'}
+                        </div>
+                        <span className="text-sm font-medium">{aluno.full_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">PIN:</span>
+                        <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                          {aluno.pin_code}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -364,19 +509,24 @@ export default function SessionDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Alunos Conectados */}
+          {/* Alunos Conectados - Com Progresso Individual */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Alunos na Sessão
+                Alunos na Sessão ({alunosSessao.length})
               </CardTitle>
               <CardDescription>
-                Aguardando alunos se conectarem...
+                Progresso individual de cada aluno (atualiza a cada 5s)
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {session.alunos_participantes === 0 ? (
+              {loadingAlunos && alunosSessao.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Carregando alunos...</p>
+                </div>
+              ) : alunosSessao.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">Nenhum aluno conectado ainda</p>
@@ -385,11 +535,66 @@ export default function SessionDashboardPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    {session.alunos_participantes} aluno(s) conectado(s)
-                  </p>
-                  {/* Aqui podemos adicionar lista de alunos no futuro */}
+                <div className="space-y-3">
+                  {alunosSessao.map((aluno) => (
+                    <div 
+                      key={aluno.aluno_id}
+                      className="p-4 border rounded-lg hover:border-blue-300 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-3 w-3 rounded-full ${
+                            aluno.status === 'active' ? 'bg-green-500' :
+                            aluno.status === 'completed' ? 'bg-blue-500' :
+                            'bg-gray-400'
+                          }`} />
+                          <span className="font-semibold">{aluno.aluno_nome}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="text-center">
+                            <p className="font-bold text-yellow-600">{aluno.pontos_ganhos}</p>
+                            <p className="text-xs text-gray-500">pontos</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="font-bold text-blue-600">
+                              {aluno.bloco_atual}/{aluno.total_blocos}
+                            </p>
+                            <p className="text-xs text-gray-500">blocos</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Barra de progresso */}
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all ${
+                            aluno.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'
+                          }`}
+                          style={{ 
+                            width: `${(aluno.blocos_completados / aluno.total_blocos) * 100}%` 
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                        <span>
+                          {aluno.blocos_completados} de {aluno.total_blocos} completados
+                        </span>
+                        <span>
+                          {aluno.status === 'completed' ? (
+                            <span className="text-green-600 font-medium flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Completo
+                            </span>
+                          ) : aluno.status === 'active' ? (
+                            'Ativo agora'
+                          ) : (
+                            'Desconectado'
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -429,5 +634,7 @@ export default function SessionDashboardPage() {
     </div>
   )
 }
+
+
 
 

@@ -162,3 +162,5 @@ CREATE POLICY "System can manage session_logs" ON session_logs
 -- Manter políticas globais para trilhas, aulas, blocos, quizzes, badges, h5p_contents
 -- (essas não têm dependência circular)
 
+
+

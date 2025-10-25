@@ -146,3 +146,5 @@ ORDER BY ordinal_position;
 E me envie o resultado para eu ajustar o código.
 
 
+
+

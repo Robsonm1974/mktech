@@ -301,6 +301,10 @@ export default function BlocosGroupedList({ initialBlocos }: BlocosGroupedListPr
         blocoId={selectedMidiaBlocoId}
         isOpen={midiaModalOpen}
         onClose={handleCloseMidiaModal}
+        onSave={() => {
+          // Recarregar a página para mostrar a mídia atualizada
+          window.location.reload()
+        }}
       />
     </>
   )

@@ -190,3 +190,8 @@ const { data } = await supabase.rpc('get_all_disciplinas')
 
 
 
+
+
+
+
+

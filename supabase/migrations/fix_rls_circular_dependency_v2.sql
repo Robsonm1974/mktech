@@ -180,3 +180,5 @@ CREATE POLICY "System can manage session_logs" ON session_logs
 -- Adicionar comentário de finalização
 COMMENT ON SCHEMA public IS 'RLS policies simplified to avoid circular dependencies. TODO: Implement proper tenant-based security in production.';
 
+
+

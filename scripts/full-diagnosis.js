@@ -136,3 +136,5 @@ WHERE email = 'robsonm1974@gmail.com';
 fullDiagnosis().catch(console.error)
 
 
+
+

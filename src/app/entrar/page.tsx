@@ -39,27 +39,34 @@ function EntrarPageContent() {
 
   const handleSessionSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!sessionCode.trim()) return
+    if (!sessionCode.trim()) {
+      setError('Digite o código da sessão')
+      return
+    }
     
     setLoading(true)
     setError('')
 
     try {
-      // Buscar sessão ativa pelo código
+      console.log('🔍 Buscando sessão com código:', sessionCode.toUpperCase())
+      
+      // Buscar sessão ativa pelo código (sem timeout para debug)
+      console.time('⏱️ Tempo de busca da sessão')
+      
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
-        .select(`
-          id,
-          status,
-          aula_id,
-          turma_id,
-          tenants(id, name, slug)
-        `)
+        .select('id, status, aula_id, turma_id, tenant_id')
         .eq('session_code', sessionCode.toUpperCase())
         .eq('status', 'active')
         .single()
+      
+      console.timeEnd('⏱️ Tempo de busca da sessão')
+
+      console.log('📊 Sessão encontrada:', session)
+      console.log('❌ Erro:', sessionError)
 
       if (sessionError || !session) {
+        console.error('❌ Erro completo:', sessionError)
         throw new Error('Sessão não encontrada ou inativa')
       }
 
@@ -79,14 +86,22 @@ function EntrarPageContent() {
         throw new Error('Nenhum aluno encontrado nesta turma')
       }
 
+      // Buscar tenant (separadamente para evitar problemas)
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('id, name, slug')
+        .eq('id', session.tenant_id)
+        .single()
+
+      console.log('🏢 Tenant encontrado:', tenant)
+
       // Salvar dados da sessão e ir para próximo passo
-      const tenantData = (session.tenants as Array<{ slug: string; name: string }>)?.[0] || null
       sessionStorage.setItem('currentSession', JSON.stringify({
         sessionId: session.id,
         aulaId: session.aula_id,
         turmaId: session.turma_id,
-        tenantSlug: tenantData?.slug || '',
-        tenantName: tenantData?.name || '',
+        tenantSlug: tenant?.slug || '',
+        tenantName: tenant?.name || '',
         alunos
       }))
 
@@ -170,42 +185,19 @@ function EntrarPageContent() {
       localStorage.setItem('studentSession', JSON.stringify(studentSession))
       
       console.log('✅ StudentSession salva:', studentSession)
-
-      // Registrar aluno na sessão (atualizar array de participantes)
-      try {
-        const { data: currentSession } = await supabase
-          .from('sessions')
-          .select('alunos_participantes')
-          .eq('id', sessionData.sessionId)
-          .single()
-
-        const participantes = currentSession?.alunos_participantes || []
-        if (!participantes.includes(studentId)) {
-          participantes.push(studentId)
-          
-          const { error: updateError } = await supabase
-            .from('sessions')
-            .update({ alunos_participantes: participantes })
-            .eq('id', sessionData.sessionId)
-
-          if (updateError) {
-            console.warn('⚠️ Não foi possível registrar aluno na sessão:', updateError)
-          } else {
-            console.log('✅ Aluno registrado na sessão')
-          }
-        }
-      } catch (err) {
-        console.warn('⚠️ Erro ao registrar aluno:', err)
-      }
-
       console.log('🚀 Redirecionando para:', `/sessao/${sessionData.sessionId}`)
 
+      // Pequeno delay para garantir que o localStorage foi salvo
+      await new Promise(resolve => setTimeout(resolve, 100))
+
       // Redirecionar para a sessão
+      console.log('🔄 Executando router.push...')
       router.push(`/sessao/${sessionData.sessionId}`)
+      
+      console.log('✅ Router.push executado')
     } catch (err) {
       console.error('❌ Erro na autenticação:', err)
       setError(err instanceof Error ? err.message : 'Erro na autenticação')
-    } finally {
       setLoading(false)
     }
   }

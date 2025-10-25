@@ -20,8 +20,10 @@ interface Aula {
   id: string
   titulo: string
   descricao: string
-  duracao_minutos: number
-  pontos_totais: number
+  ano_escolar_id: string
+  ano_nome: string
+  disciplina_codigo: string
+  disciplina_nome: string
 }
 
 function IniciarSessaoContent() {
@@ -83,22 +85,41 @@ function IniciarSessaoContent() {
     loadTurmas()
   }, [user, supabase, turmaIdFromUrl])
 
-  // Carregar aulas publicadas
+  // Carregar aulas disponíveis
   useEffect(() => {
     const loadAulas = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('aulas')
-          .select('id, titulo, descricao, duracao_minutos, pontos_totais')
-          .eq('publicada', true)
-          .order('numero_sequencia')
+      if (!user?.tenant_id || !turmaSelected) {
+        setLoadingAulas(false)
+        return
+      }
 
-        if (error) {
-          console.error('Erro ao carregar aulas:', error)
+      try {
+        // Buscar ano escolar da turma selecionada
+        const turmaData = turmas.find(t => t.id === turmaSelected)
+        if (!turmaData) {
+          setLoadingAulas(false)
           return
         }
 
-        setAulas(data || [])
+        // Buscar aulas usando RPC
+        const { data, error } = await supabase.rpc('get_aulas_with_relations_admin', {
+          p_tenant_id: user.tenant_id,
+          p_turma_id: null,
+          p_active: null
+        })
+
+        if (error) {
+          console.error('Erro ao carregar aulas:', error)
+          setLoadingAulas(false)
+          return
+        }
+
+        // Filtrar aulas pelo ano escolar da turma
+        const aulasFiltered = (data || []).filter(
+          (aula: Aula) => aula.ano_escolar_id === turmaData.grade_level
+        )
+
+        setAulas(aulasFiltered)
       } catch (error) {
         console.error('Erro:', error)
       } finally {
@@ -107,7 +128,7 @@ function IniciarSessaoContent() {
     }
 
     loadAulas()
-  }, [supabase])
+  }, [supabase, user, turmaSelected, turmas])
 
   const handleIniciarSessao = async () => {
     if (!turmaSelected || !aulaSelected || !user) {
@@ -350,7 +371,7 @@ function IniciarSessaoContent() {
                 <SelectContent>
                   {aulas.map((aula) => (
                     <SelectItem key={aula.id} value={aula.id}>
-                      {aula.titulo} ({aula.duracao_minutos} min - {aula.pontos_totais} pts)
+                      {aula.titulo} {aula.disciplina_codigo ? `(${aula.disciplina_codigo})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -366,8 +387,8 @@ function IniciarSessaoContent() {
                   {aulaSelectedData.descricao}
                 </p>
                 <div className="flex gap-4 mt-3 text-sm text-blue-600">
-                  <span>⏱️ {aulaSelectedData.duracao_minutos} minutos</span>
-                  <span>⭐ {aulaSelectedData.pontos_totais} pontos</span>
+                  <span>📚 {aulaSelectedData.disciplina_nome || 'Disciplina'}</span>
+                  <span>📅 {aulaSelectedData.ano_nome || 'Ano'}</span>
                 </div>
               </div>
             )}
@@ -398,9 +419,9 @@ function IniciarSessaoContent() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">Duração:</span>
+                  <span className="text-sm font-medium text-gray-700">Disciplina:</span>
                   <span className="text-sm text-gray-900 font-semibold">
-                    {aulaSelectedData?.duracao_minutos} minutos
+                    {aulaSelectedData?.disciplina_nome || 'N/A'}
                   </span>
                 </div>
 

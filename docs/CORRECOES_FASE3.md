@@ -166,3 +166,5 @@ Agora que a criação de sessão está funcionando, podemos:
 4. Implementar a página `/entrar` para alunos escanearem o QR Code
 
 
+
+

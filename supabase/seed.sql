@@ -50,3 +50,5 @@ INSERT INTO h5p_contents (id, titulo, library, json_data, max_score, storage_pat
 -- Atualizar referência do quiz no bloco
 UPDATE blocos SET quiz_id = '550e8400-e29b-41d4-a716-446655440009' WHERE id = '550e8400-e29b-41d4-a716-446655440006';
 UPDATE blocos SET quiz_id = '550e8400-e29b-41d4-a716-446655440010' WHERE id = '550e8400-e29b-41d4-a716-446655440008';
+
+
