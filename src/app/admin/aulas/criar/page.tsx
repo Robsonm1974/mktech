@@ -60,6 +60,7 @@ function CriarAulaForm() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [filtroDisciplina, setFiltroDisciplina] = useState('')
+  const [filtroAno, setFiltroAno] = useState('')
 
   const supabase = createSupabaseBrowserClient()
 
@@ -203,9 +204,12 @@ function CriarAulaForm() {
     const matchDisciplina = !filtroDisciplina || 
       bloco.disciplinas?.codigo === filtroDisciplina
 
+    const matchAno = !filtroAno || 
+      bloco.ano_escolar_id === filtroAno
+
     const naoSelecionado = !blocosSelecionados.find(b => b.id === bloco.id)
 
-    return matchSearch && matchDisciplina && naoSelecionado
+    return matchSearch && matchDisciplina && matchAno && naoSelecionado
   })
 
   // Calcular pontos totais
@@ -334,6 +338,16 @@ function CriarAulaForm() {
                     <option value="">Todas as disciplinas</option>
                     {disciplinas.map(disc => (
                       <option key={disc.id} value={disc.codigo}>{disc.nome}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={filtroAno}
+                    onChange={(e) => setFiltroAno(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Todos os anos escolares</option>
+                    {anosEscolares.map(ano => (
+                      <option key={ano.id} value={ano.id}>{ano.nome}</option>
                     ))}
                   </select>
                 </div>

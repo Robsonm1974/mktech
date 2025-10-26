@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, Users, BookOpen, Settings, FileText, Film, HelpCircle, LayoutDashboard } from 'lucide-react'
+import { Building2, Users, BookOpen, Settings, FileText, Film, HelpCircle, LayoutDashboard, Gamepad2 } from 'lucide-react'
 
 const menuItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/tenants', icon: Building2, label: 'Escolas (Tenants)' },
   { href: '/admin/blocos', icon: FileText, label: 'Fábrica de Blocos' },
+  { href: '/admin/fabrica-jogos', icon: Gamepad2, label: '🎮 Fábrica de Jogos' },
   { href: '/admin/midias', icon: Film, label: 'Mídias' },
   { href: '/admin/quizzes', icon: HelpCircle, label: 'Quizzes' },
   { href: '/admin/aulas', icon: BookOpen, label: 'Aulas' },

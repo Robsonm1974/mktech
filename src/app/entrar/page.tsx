@@ -8,9 +8,21 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client-browser'
-import { Loader2, QrCode, Hash } from 'lucide-react'
+import { Loader2, QrCode, Hash, ArrowLeft } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 type LoginMode = 'qr' | 'code'
+
+// Helper para converter ícone em emoji
+const getEmojiFromIcon = (icon: string): string => {
+  const iconMap: Record<string, string> = {
+    dog: '🐕',
+    cat: '🐱',
+    fruit: '🍎',
+    flower: '🌸'
+  }
+  return iconMap[icon] || '🎯'
+}
 
 function EntrarPageContent() {
   const [mode, setMode] = useState<LoginMode>('qr')
@@ -203,207 +215,265 @@ function EntrarPageContent() {
   }
 
   const renderSessionStep = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <QrCode className="h-5 w-5" />
-          Entrar na Aula
-        </CardTitle>
-        <CardDescription>
-          Escaneie o QR Code ou digite o código da sessão
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Toggle QR/Code */}
-        <div className="flex gap-2">
-          <Button
-            variant={mode === 'qr' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMode('qr')}
-            className="flex items-center gap-2"
-          >
-            <QrCode className="h-4 w-4" />
-            QR Code
-          </Button>
-          <Button
-            variant={mode === 'code' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMode('code')}
-            className="flex items-center gap-2"
-          >
-            <Hash className="h-4 w-4" />
-            Código
-          </Button>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Card className="rounded-3xl shadow-2xl border-0 bg-white/95 backdrop-blur-md overflow-hidden">
+        <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-6 text-center">
+          <div className="text-6xl mb-3">🚀</div>
+          <h2 className="text-3xl font-black text-white mb-2">Entrar na Aula</h2>
+          <p className="text-white/90 font-medium">Escaneie o QR ou digite o código</p>
         </div>
 
-        <form onSubmit={handleSessionSubmit} className="space-y-4">
-          {mode === 'qr' ? (
-            <div className="text-center py-8">
-              <div className="w-48 h-48 mx-auto bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                <QrCode className="h-24 w-24 text-gray-400" />
-              </div>
-              <p className="text-sm text-gray-600">
-                Posicione o QR Code na câmera ou digite o código abaixo
-              </p>
-            </div>
-          ) : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="sessionCode">
-              {mode === 'qr' ? 'Código da Sessão' : 'Digite o código da sessão'}
-            </Label>
-            <Input
-              id="sessionCode"
-              type="text"
-              placeholder="Ex: AB-94"
-              value={sessionCode}
-              onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
-              className="text-center text-lg font-mono"
-              required
-            />
+        <CardContent className="p-8">
+          {/* Toggle QR/Code */}
+          <div className="flex gap-3 mb-6">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setMode('qr')}
+              className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all ${
+                mode === 'qr'
+                  ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <QrCode className="inline-block w-5 h-5 mr-2" />
+              QR Code
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setMode('code')}
+              className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all ${
+                mode === 'code'
+                  ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Hash className="inline-block w-5 h-5 mr-2" />
+              Código
+            </motion.button>
           </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          <form onSubmit={handleSessionSubmit} className="space-y-6">
+            {mode === 'qr' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-8"
+              >
+                <div className="w-64 h-64 mx-auto bg-gradient-to-br from-purple-100 to-blue-100 rounded-3xl flex items-center justify-center mb-4 shadow-lg">
+                  <QrCode className="w-32 h-32 text-[#667eea]" />
+                </div>
+                <p className="text-sm text-gray-600 font-medium">
+                  Posicione o QR Code na câmera
+                </p>
+              </motion.div>
+            )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? 'Validando...' : 'Continuar'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <div className="space-y-3">
+              <Label htmlFor="sessionCode" className="text-lg font-bold text-gray-700">
+                Código da Sessão
+              </Label>
+              <Input
+                id="sessionCode"
+                type="text"
+                placeholder="Ex: AB-94"
+                value={sessionCode}
+                onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                className="text-center text-3xl font-black py-6 rounded-2xl border-4 border-purple-200 focus:border-purple-500 transition-all"
+                required
+              />
+            </div>
+
+            {error && (
+              <Alert variant="destructive" className="rounded-xl">
+                <AlertDescription className="font-medium">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                type="submit"
+                className="w-full py-6 rounded-2xl text-xl font-black bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:shadow-2xl transition-all"
+                disabled={loading}
+              >
+                {loading && <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
+                {loading ? 'Validando...' : 'Continuar 🚀'}
+              </Button>
+            </motion.div>
+          </form>
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 
   const renderStudentStep = () => {
     const sessionData = JSON.parse(sessionStorage.getItem('currentSession') || '{}')
     
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Selecione seu nome</CardTitle>
-          <CardDescription>
-            {sessionData.tenantName} - Turma da sessão
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {sessionData.alunos?.map((aluno: { id: string; full_name: string; icone_afinidade: string }) => (
-              <Button
-                key={aluno.id}
-                variant="outline"
-                className="w-full justify-start h-auto p-4"
-                onClick={() => handleStudentSelect(aluno.id)}
-              >
-                <div className="text-left">
-                  <div className="font-medium">{aluno.full_name}</div>
-                  <div className="text-sm text-gray-500">
-                    Ícone: {aluno.icone_afinidade}
-                  </div>
-                </div>
-              </Button>
-            ))}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white/95 backdrop-blur-md overflow-hidden">
+          <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-6 text-center">
+            <div className="text-6xl mb-3">👋</div>
+            <h2 className="text-3xl font-black text-white mb-2">Selecione seu nome</h2>
+            <p className="text-white/90 font-medium">{sessionData.tenantName} - Turma da sessão</p>
           </div>
 
-          <div className="mt-4">
-            <Button
-              variant="ghost"
+          <CardContent className="p-8 space-y-4">
+            {sessionData.alunos?.map((aluno: { id: string; full_name: string; icone_afinidade: string }, index: number) => (
+              <motion.button
+                key={aluno.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.02, x: 8 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleStudentSelect(aluno.id)}
+                className="w-full p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-3xl border-4 border-transparent hover:border-purple-300 transition-all shadow-md hover:shadow-xl"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-2xl flex items-center justify-center text-4xl shadow-lg">
+                    {getEmojiFromIcon(aluno.icone_afinidade)}
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="text-2xl font-black text-gray-800">{aluno.full_name}</p>
+                    <p className="text-sm text-gray-600 font-medium">Clique para continuar</p>
+                  </div>
+                  <div className="text-3xl">→</div>
+                </div>
+              </motion.button>
+            ))}
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setStep('session')}
-              className="w-full"
+              className="w-full mt-6 py-4 rounded-2xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 transition-all flex items-center justify-center gap-2"
             >
-              ← Voltar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </motion.button>
+          </CardContent>
+        </Card>
+      </motion.div>
     )
   }
 
   const renderAuthStep = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Autenticação</CardTitle>
-        <CardDescription>
-          Confirme seu ícone e digite seu PIN
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleAuthSubmit} className="space-y-4">
-          {/* Seleção de Ícone */}
-          <div className="space-y-2">
-            <Label>Seu ícone de afinidade</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {icons.map((icon) => (
-                <Button
-                  key={icon}
-                  type="button"
-                  variant={selectedIcon === icon ? 'default' : 'outline'}
-                  onClick={() => setSelectedIcon(icon)}
-                  className="h-16 text-lg"
-                >
-                  {icon === 'dog' && '🐕'}
-                  {icon === 'cat' && '🐱'}
-                  {icon === 'fruit' && '🍎'}
-                  {icon === 'flower' && '🌸'}
-                </Button>
-              ))}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Card className="rounded-3xl shadow-2xl border-0 bg-white/95 backdrop-blur-md overflow-hidden">
+        <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-6 text-center">
+          <div className="text-6xl mb-3">🔐</div>
+          <h2 className="text-3xl font-black text-white mb-2">Autenticação</h2>
+          <p className="text-white/90 font-medium">Confirme seu ícone e digite seu PIN</p>
+        </div>
+
+        <CardContent className="p-8">
+          <form onSubmit={handleAuthSubmit} className="space-y-6">
+            {/* Seleção de Ícone */}
+            <div className="space-y-3">
+              <Label className="text-lg font-bold text-gray-700">Seu ícone de afinidade</Label>
+              <div className="grid grid-cols-2 gap-4">
+                {icons.map((icon) => (
+                  <motion.button
+                    key={icon}
+                    type="button"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedIcon(icon)}
+                    className={`h-24 rounded-2xl text-5xl transition-all ${
+                      selectedIcon === icon
+                        ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] shadow-xl scale-105 border-4 border-purple-300'
+                        : 'bg-white border-4 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    {getEmojiFromIcon(icon)}
+                  </motion.button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* PIN */}
-          <div className="space-y-2">
-            <Label htmlFor="pin">PIN (4 dígitos)</Label>
-            <Input
-              id="pin"
-              type="password"
-              placeholder="••••"
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              inputMode="numeric"
-              maxLength={4}
-              className="text-center text-lg font-mono"
-              required
-            />
-          </div>
+            {/* PIN */}
+            <div className="space-y-3">
+              <Label htmlFor="pin" className="text-lg font-bold text-gray-700">
+                PIN (4 dígitos)
+              </Label>
+              <Input
+                id="pin"
+                type="password"
+                placeholder="••••"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                inputMode="numeric"
+                maxLength={4}
+                className="text-center text-4xl font-black py-6 rounded-2xl border-4 border-purple-200 focus:border-purple-500 transition-all tracking-widest"
+                required
+              />
+            </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+            {error && (
+              <Alert variant="destructive" className="rounded-xl">
+                <AlertDescription className="font-medium">{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <div className="space-y-2">
-            <Button type="submit" className="w-full" disabled={loading || !selectedIcon || pin.length !== 4}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? 'Entrando...' : 'Entrar na Aula'}
-            </Button>
-            
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setStep('student')}
-              className="w-full"
-            >
-              ← Voltar
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+            <div className="space-y-3">
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  type="submit"
+                  className="w-full py-6 rounded-2xl text-xl font-black bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:shadow-2xl transition-all"
+                  disabled={loading || !selectedIcon || pin.length !== 4}
+                >
+                  {loading && <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
+                  {loading ? 'Entrando...' : 'Entrar na Aula 🎯'}
+                </Button>
+              </motion.div>
+              
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setStep('student')}
+                className="w-full py-4 rounded-2xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 transition-all flex items-center justify-center gap-2"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Voltar
+              </motion.button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white py-12 px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">MKTECH</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Acesso rápido para alunos
+    <div className="min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2] py-8 px-4 flex items-center justify-center">
+      <div className="max-w-lg w-full space-y-8">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center"
+        >
+          <h1 className="text-6xl font-black text-white mb-3 drop-shadow-lg">
+            🚀 MK-SMART
+          </h1>
+          <p className="text-2xl text-white/90 font-bold">
+            Acesso Rápido para Alunos
           </p>
-        </div>
+        </motion.div>
 
         {step === 'session' && renderSessionStep()}
         {step === 'student' && renderStudentStep()}
@@ -416,8 +486,11 @@ function EntrarPageContent() {
 export default function EntrarPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2]">
+        <div className="text-center">
+          <Loader2 className="h-16 w-16 animate-spin text-white mx-auto mb-4" />
+          <p className="text-2xl font-black text-white">Carregando...</p>
+        </div>
       </div>
     }>
       <EntrarPageContent />

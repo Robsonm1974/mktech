@@ -9,6 +9,8 @@ import { Progress } from '@/components/ui/progress'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client-browser'
 import { Loader2, Play, Trophy, Star, CheckCircle2, Lock, AlertCircle, Sparkles, Target } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { QuizAnimado, FloatingPoints, TransitionScreen, ConfettiCelebration } from '@/components/gamification'
+import { useSound } from '@/hooks/useSound'
 
 // ============================================================================
 // INTERFACES
@@ -100,6 +102,35 @@ export default function SessaoPage() {
   const [respostasSelecionadas, setRespostasSelecionadas] = useState<number[]>([])
   const [tentativas, setTentativas] = useState<number[]>([])
   const [quizzesCompletados, setQuizzesCompletados] = useState<Set<string>>(new Set())
+  
+  // Gamificação
+  const [floatingPoints, setFloatingPoints] = useState<{
+    show: boolean
+    points: number
+    position: { x: number; y: number }
+  }>({
+    show: false,
+    points: 0,
+    position: { x: 0, y: 0 }
+  })
+  
+  // Transições
+  const [mostrarTransicao, setMostrarTransicao] = useState(false)
+  const [dadosTransicao, setDadosTransicao] = useState<{
+    blocoAnterior: {
+      titulo: string
+      tempoGasto: number
+      acertos: number
+      erros: number
+      pontosGanhos: number
+      totalPerguntas: number
+    }
+    proximoBloco: { titulo: string; tipo: string } | null
+  } | null>(null)
+  
+  // Celebração final
+  const [mostrarCelebracao, setMostrarCelebracao] = useState(false)
+  const [tempoInicioBloco, setTempoInicioBloco] = useState<number>(0)
 
   // Sons
   const playSound = (soundName: string) => {
@@ -333,6 +364,7 @@ export default function SessaoPage() {
 
   const handleIniciarBloco = () => {
     setBlocoAtivo(true)
+    setTempoInicioBloco(Date.now()) // Iniciar contador de tempo
     playSound('click')
     toast({
       title: 'Bloco iniciado!',
@@ -366,34 +398,74 @@ export default function SessaoPage() {
         throw new Error(data?.message || 'Erro ao completar bloco')
       }
 
-      playSound('achievement')
-      toast({
-        title: 'Bloco completado!',
-        description: `+${blocoAtual.pontos_bloco} pontos`,
-        variant: 'default'
-      })
+      // Calcular tempo gasto
+      const tempoGasto = tempoInicioBloco > 0 
+        ? Math.floor((Date.now() - tempoInicioBloco) / 1000)
+        : 0
+
+      // Calcular acertos/erros do quiz
+      let acertos = 0
+      let erros = 0
+      let totalPerguntas = 0
+
+      if (blocoAtual.quizzes) {
+        totalPerguntas = blocoAtual.quizzes.perguntas.length
+        blocoAtual.quizzes.perguntas.forEach((_, idx) => {
+          const tentativa = tentativas[idx]
+          if (tentativa === -1) acertos++
+          else if (tentativa > 0) erros++
+        })
+      }
 
       // Recarregar progresso
       if (studentSession) {
         await loadProgresso(studentSession.alunoId, blocos)
       }
 
-      // Resetar estados
-      setBlocoAtivo(false)
-      setBlocoConteudoVisto(false)
-      setQuizAtivo(false)
-      setRespostasSelecionadas([])
-      setTentativas([])
-
-      // Se sessão completa
+      // Se sessão completa - mostrar celebração
       if (data.sessao_completa) {
-        playSound('level-up')
-        toast({
-          title: '🎉 Sessão Completa!',
-          description: 'Parabéns! Você completou todos os blocos!',
-          variant: 'default'
-        })
+        playSound('levelup')
+        
+        // Calcular estatísticas finais
+        const totalAcertos = participacao?.blocos_completados || 0
+        const totalPontos = participacao?.pontos_ganhos_sessao || 0
+        const performance = totalPerguntas > 0 ? (acertos / totalPerguntas) * 100 : 100
+
+        setMostrarCelebracao(true)
+        
+        // Resetar estados
+        setBlocoAtivo(false)
+        setBlocoConteudoVisto(false)
+        setQuizAtivo(false)
+        setRespostasSelecionadas([])
+        setTentativas([])
+        return
       }
+
+      // Encontrar próximo bloco
+      const blocoAtualIndex = blocos.findIndex(b => b.id === blocoAtual.id)
+      const proximoBloco = blocoAtualIndex < blocos.length - 1 
+        ? blocos[blocoAtualIndex + 1]
+        : null
+
+      // Preparar dados da transição
+      setDadosTransicao({
+        blocoAnterior: {
+          titulo: blocoAtual.titulo,
+          tempoGasto,
+          acertos,
+          erros,
+          pontosGanhos: blocoAtual.pontos_bloco,
+          totalPerguntas
+        },
+        proximoBloco: proximoBloco ? {
+          titulo: proximoBloco.titulo,
+          tipo: proximoBloco.tipo_midia || 'conteudo'
+        } : null
+      })
+
+      // Mostrar tela de transição
+      setMostrarTransicao(true)
 
     } catch (error) {
       console.error('Erro ao completar bloco:', error)
@@ -403,6 +475,38 @@ export default function SessaoPage() {
         variant: 'destructive'
       })
     }
+  }
+
+  // Callback ao fechar transição
+  const handleContinuarAposTransicao = () => {
+    setMostrarTransicao(false)
+    setDadosTransicao(null)
+    
+    // Resetar estados
+    setBlocoAtivo(false)
+    setBlocoConteudoVisto(false)
+    setQuizAtivo(false)
+    setRespostasSelecionadas([])
+    setTentativas([])
+    setTempoInicioBloco(0)
+  }
+
+  // Callback ao fechar celebração
+  const handleFecharCelebracao = () => {
+    setMostrarCelebracao(false)
+    
+    // Resetar estados
+    setBlocoAtivo(false)
+    setBlocoConteudoVisto(false)
+    setQuizAtivo(false)
+    setRespostasSelecionadas([])
+    setTentativas([])
+    
+    toast({
+      title: '🎉 Sessão Completa!',
+      description: 'Parabéns! Você completou todos os blocos!',
+      variant: 'default'
+    })
   }
 
   // ============================================================================
@@ -631,6 +735,62 @@ export default function SessaoPage() {
     }
   }
 
+  // Handler para resposta do QuizAnimado
+  const handleRespostaQuizAnimado = async (params: {
+    perguntaIndex: number
+    respostaSelecionada: number
+    correto: boolean
+    pontosGanhos: number
+    tentativaAtual: number
+  }) => {
+    const { correto, pontosGanhos, perguntaIndex, respostaSelecionada, tentativaAtual } = params
+
+    console.log('📝 Resposta registrada:', params)
+
+    // Mostrar pontos flutuantes se acertou
+    if (correto) {
+      playSound('correct')
+      setFloatingPoints({
+        show: true,
+        points: pontosGanhos,
+        position: { 
+          x: window.innerWidth / 2, 
+          y: window.innerHeight / 3 
+        }
+      })
+    } else {
+      playSound('incorrect')
+    }
+
+    // Registrar no banco
+    try {
+      const { error } = await supabase.rpc('registrar_resposta_quiz', {
+        p_quiz_id: blocoAtual?.quizzes?.id,
+        p_aluno_id: studentSession?.alunoId,
+        p_session_id: sessionId,
+        p_participacao_id: participacaoId,
+        p_pergunta_index: perguntaIndex,
+        p_resposta_escolhida: respostaSelecionada,
+        p_correto: correto,
+        p_pontos_ganhos: pontosGanhos,
+        p_tentativa_numero: tentativaAtual
+      })
+
+      if (error) {
+        console.error('❌ Erro ao registrar resposta:', error)
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível salvar sua resposta',
+          variant: 'destructive'
+        })
+      } else {
+        console.log('✅ Resposta salva com sucesso!')
+      }
+    } catch (err) {
+      console.error('💥 Exceção ao registrar resposta:', err)
+    }
+  }
+
   const renderQuiz = () => {
     if (!blocoAtual?.quizzes) return null
 
@@ -638,85 +798,27 @@ export default function SessaoPage() {
 
     return (
       <div className="space-y-6">
-        <Card className="rounded-3xl shadow-2xl border-0 bg-gradient-to-br from-white to-blue-50">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-2xl font-black flex items-center gap-3">
-              <Star className="h-8 w-8 text-yellow-500" />
-              {quiz.titulo}
-            </CardTitle>
-            <CardDescription className="text-base">
-              Responda corretamente para ganhar pontos!
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {quiz.perguntas.map((pergunta, idx) => {
-              const tentativa = tentativas[idx] || 0
-              const completada = tentativa === -1
-              const respostaSelecionada = respostasSelecionadas[idx]
-
-              return (
-                <div key={idx} className="p-6 bg-white rounded-2xl shadow-lg border-2 border-gray-100 space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <h4 className="font-bold text-lg">{pergunta.prompt}</h4>
-                    <Badge 
-                      variant={completada ? 'default' : 'outline'}
-                      className={`px-4 py-2 text-sm font-bold ${
-                        completada ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' : 'bg-yellow-100 text-yellow-700 border-yellow-300'
-                      }`}
-                    >
-                      {completada ? '✓ Completo' : `${pergunta.pontos} pts`}
-                    </Badge>
-                  </div>
-
-                  {!completada && (
-                    <>
-                      <div className="space-y-3">
-                        {pergunta.choices.map((choice, choiceIdx) => (
-                          <button
-                            key={choiceIdx}
-                            onClick={() => handleSelecionarResposta(idx, choiceIdx)}
-                            disabled={completada}
-                            className={`w-full p-4 text-left border-2 rounded-xl transition-all font-medium ${
-                              respostaSelecionada === choiceIdx
-                                ? 'border-[#667eea] bg-gradient-to-r from-[#667eea]/10 to-[#764ba2]/10 shadow-md transform scale-[1.02]'
-                                : 'border-gray-200 hover:border-gray-400 hover:shadow-md hover:transform hover:scale-[1.01]'
-                            } ${completada ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#667eea] text-white font-bold mr-3">
-                              {String.fromCharCode(65 + choiceIdx)}
-                            </span>
-                            {choice}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-3">
-                        <p className="text-sm text-muted-foreground font-medium">
-                          {tentativa > 0 && `Tentativa ${tentativa}/2`}
-                        </p>
-                        <Button
-                          onClick={() => handleResponderPergunta(idx)}
-                          disabled={respostaSelecionada === undefined || tentativa >= 2}
-                          size="lg"
-                          className="bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:from-[#5568d3] to-[#6a3d8f] px-8 font-bold shadow-lg"
-                        >
-                          Responder
-                        </Button>
-                      </div>
-                    </>
-                  )}
-
-                  {completada && (
-                    <div className="bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-4 flex items-center gap-3">
-                      <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0" />
-                      <span className="text-green-700 font-bold">Pergunta respondida corretamente!</span>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </CardContent>
-        </Card>
+        <QuizAnimado
+          quiz={{
+            id: quiz.id,
+            titulo: quiz.titulo,
+            tipo: quiz.tipo,
+            perguntas: quiz.perguntas
+          }}
+          tentativasPermitidas={2}
+          tempoLimiteSeg={300}
+          onResposta={handleRespostaQuizAnimado}
+          onQuizCompleto={() => {
+            console.log('🎉 Quiz completo!')
+            playSound('complete')
+            setQuizzesCompletados(prev => new Set(prev).add(quiz.id))
+            
+            // Aguardar 1.5s e completar bloco
+            setTimeout(() => {
+              handleCompletarBloco()
+            }, 1500)
+          }}
+        />
       </div>
     )
   }
@@ -929,6 +1031,50 @@ export default function SessaoPage() {
           )}
         </div>
       </div>
+
+      {/* FloatingPoints - Animação de pontos */}
+      {floatingPoints.show && (
+        <FloatingPoints
+          points={floatingPoints.points}
+          position={floatingPoints.position}
+          onComplete={() => setFloatingPoints(prev => ({ ...prev, show: false }))}
+        />
+      )}
+
+      {/* TransitionScreen - Tela de transição entre blocos */}
+      {mostrarTransicao && dadosTransicao && participacao && (
+        <TransitionScreen
+          blocoAnterior={dadosTransicao.blocoAnterior}
+          proximoBloco={dadosTransicao.proximoBloco}
+          progressoGeral={{
+            blocoAtual: participacao.blocos_completados,
+            totalBlocos: participacao.total_blocos,
+            pontosAcumulados: participacao.pontos_ganhos_sessao
+          }}
+          onContinuar={handleContinuarAposTransicao}
+          autoAdvance={true}
+          countdownSeconds={5}
+        />
+      )}
+
+      {/* ConfettiCelebration - Celebração ao completar sessão */}
+      {mostrarCelebracao && participacao && (
+        <ConfettiCelebration
+          estatisticas={{
+            totalBlocos: participacao.total_blocos,
+            totalPontos: participacao.pontos_ganhos_sessao,
+            tempoTotal: 0, // TODO: calcular tempo total da sessão
+            acertosTotal: participacao.blocos_completados,
+            errosTotal: 0,
+            performance: (participacao.blocos_completados / participacao.total_blocos) * 100
+          }}
+          onFechar={handleFecharCelebracao}
+          duracao={4000}
+        />
+      )}
+
+      {/* Audio ref para sons */}
+      <audio ref={audioRef} />
     </>
   )
 }
