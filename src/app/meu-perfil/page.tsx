@@ -78,13 +78,33 @@ export default function MeuPerfilPage() {
 
   const loadProfile = async () => {
     try {
-      const sessionStr = localStorage.getItem('studentSession')
-      if (!sessionStr) {
+      // Compatibilidade: primeiro tenta sessionStorage (novo), depois localStorage (legado)
+      let session: StudentSession | null = null
+
+      // Buscar a última sessão de aluno ativa no sessionStorage (chaves studentSession:*)
+      try {
+        const keys: string[] = Object.keys(sessionStorage)
+          .filter((k) => k.startsWith('studentSession:'))
+        if (keys.length > 0) {
+          // usa a mais recente (ordem do storage não é garantida, mas geralmente a última inserida fica no fim)
+          const chosenKey = keys[keys.length - 1] as string
+          const value = sessionStorage.getItem(chosenKey)
+          if (value) session = JSON.parse(value)
+        }
+      } catch {}
+
+      // Fallback legado
+      if (!session) {
+        const legacy = localStorage.getItem('studentSession')
+        if (legacy) {
+          try { session = JSON.parse(legacy) } catch {}
+        }
+      }
+
+      if (!session || !session.alunoId) {
         router.push('/entrar')
         return
       }
-
-      const session: StudentSession = JSON.parse(sessionStr)
 
       // Buscar dados do aluno
       const { data: alunoData, error } = await supabase

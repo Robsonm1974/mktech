@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client-browser'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building2, Users, BookOpen, FileText, Activity } from 'lucide-react'
@@ -66,7 +67,8 @@ export default function AdminDashboardPage() {
         <p className="text-slate-600 mt-1">Visão geral da plataforma MKTECH</p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      {/* Cards responsivos */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-slate-600">Tenants Ativos</CardTitle>
@@ -137,10 +139,10 @@ export default function AdminDashboardPage() {
               <div className="font-medium text-green-900">Nova Escola</div>
               <div className="text-sm text-green-700">Cadastrar novo tenant</div>
             </a>
-            <a href="/admin/aulas" className="block p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition">
+            <Link href="/admin/aulas" className="block p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition">
               <div className="font-medium text-purple-900">Gerenciar Aulas</div>
               <div className="text-sm text-purple-700">Criar e editar aulas</div>
-            </a>
+            </Link>
           </CardContent>
         </Card>
 

@@ -64,7 +64,7 @@ export default function BlocoPlayer({
   return (
     <div className="w-full space-y-4">
       {/* Player */}
-      <div className="w-full bg-black rounded-lg overflow-hidden">
+      <div className={`w-full ${tipo_midia === 'video' ? 'bg-black rounded-none md:rounded-lg overflow-hidden' : 'bg-black rounded-lg overflow-hidden'}`}>
         {tipo_midia === 'video' && (
           <VideoPlayer url={midia_url} onComplete={onComplete} />
         )}

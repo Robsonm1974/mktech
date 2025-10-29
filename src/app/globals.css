@@ -57,6 +57,22 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  /* Temas por segmento via data-attribute */
+  :root[data-theme='student'] {
+    --radius: 0.9rem;
+    --primary: 221.2 83.2% 53.3%;
+    --ring: 221.2 83.2% 53.3%;
+    --background: 210 40% 98%;
+    --card: 0 0% 100%;
+    --muted: 214 32% 91%;
+    --accent: 214 32% 91%;
+  }
+
+  :root[data-theme='admin'] {
+    /* Mantém aparência atual do admin como fallback explícito */
+    --radius: 0.65rem;
+  }
 }
 
 

@@ -20,7 +20,7 @@ export default function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-slate-900 text-white flex flex-col">
+    <aside className="w-64 bg-slate-900 text-white flex flex-col h-full">
       <div className="p-6 border-b border-slate-800">
         <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
           MKTECH Admin
@@ -28,7 +28,7 @@ export default function AdminSidebar() {
         <p className="text-xs text-slate-400 mt-1">Painel Administrativo</p>
       </div>
       
-      <nav className="flex-1 px-4 py-4">
+      <nav className="flex-1 px-4 py-4 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')

@@ -181,6 +181,7 @@ export default function ConfigurarMidiaModal({
       case 'lottie':
       case 'phaser':
       case 'h5p':
+      case 'html5':
         return (
           <div className="aspect-video bg-slate-100 rounded-lg flex items-center justify-center">
             <div className="text-center text-slate-600">
@@ -231,6 +232,7 @@ export default function ConfigurarMidiaModal({
                 <option value="lottie">🎬 Animação Lottie (JSON)</option>
                 <option value="phaser">🎮 Jogo Phaser</option>
                 <option value="h5p">📚 Conteúdo H5P</option>
+                <option value="html5">🎯 Jogo HTML5</option>
               </select>
             </div>
 
@@ -250,6 +252,8 @@ export default function ConfigurarMidiaModal({
                       ? 'https://www.youtube.com/watch?v=...'
                       : form.tipo_midia === 'lottie'
                       ? 'https://example.com/animation.json'
+                      : form.tipo_midia === 'html5'
+                      ? '/jogos-html5/math_collection_game/math_collection_game.html'
                       : 'https://example.com/content'
                   }
                   disabled={saving}
@@ -259,6 +263,7 @@ export default function ConfigurarMidiaModal({
                   {form.tipo_midia === 'lottie' && 'URL do arquivo JSON da animação Lottie'}
                   {form.tipo_midia === 'phaser' && 'URL onde o jogo Phaser está hospedado'}
                   {form.tipo_midia === 'h5p' && 'URL do conteúdo H5P embarcável'}
+                  {form.tipo_midia === 'html5' && 'URL do arquivo HTML do jogo (caminho local como /jogos-html5/...)'}
                 </p>
               </div>
             )}

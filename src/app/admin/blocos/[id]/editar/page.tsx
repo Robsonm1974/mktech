@@ -204,6 +204,7 @@ export default function EditarBlocoPage() {
                 <option value="lottie">Lottie Animation</option>
                 <option value="phaser">Jogo Phaser</option>
                 <option value="h5p">H5P</option>
+                <option value="html5">Jogo HTML5</option>
               </select>
             </div>
           </div>

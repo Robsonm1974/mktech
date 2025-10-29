@@ -4,7 +4,7 @@ import { useEffect, useState, FormEvent, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client-browser'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Plus, X, Save, Search } from 'lucide-react'
+import { ArrowLeft, Plus, X, Save, Search, Gamepad2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface AnoEscolar {
@@ -33,8 +33,28 @@ interface BlocoTemplate {
     nome: string
     cor_hex?: string
     icone?: string
-  } | null
+  }[] | null
   ano_escolar_id?: string | null
+}
+
+// 🎮 NOVO: Interface para Jogos
+interface Game {
+  id: string
+  codigo: string
+  titulo: string
+  descricao: string | null
+  duracao_segundos: number
+  publicado: boolean
+  ano_escolar_id?: string | null
+  disciplina_id?: string | null
+}
+
+// 🎮 NOVO: Tipo unificado para Blocos + Jogos
+type ItemAula = {
+  tipo: 'bloco' | 'jogo'
+  id: string
+  ordem: number
+  dados: BlocoTemplate | Game
 }
 
 const TRILHA_PADRAO_ID = '00000000-0000-0000-0000-000000000001'
@@ -47,7 +67,13 @@ function CriarAulaForm() {
   const [anosEscolares, setAnosEscolares] = useState<AnoEscolar[]>([])
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
   const [blocosDisponiveis, setBlocosDisponiveis] = useState<BlocoTemplate[]>([])
-  const [blocosSelecionados, setBlocosSelecionados] = useState<BlocoTemplate[]>([])
+  
+  // 🎮 NOVO: Estado para jogos
+  const [jogosDisponiveis, setJogosDisponiveis] = useState<Game[]>([])
+  const [loadingJogos, setLoadingJogos] = useState(false)
+  
+  // 🎮 NOVO: Estado unificado (substitui blocosSelecionados)
+  const [itensSelecionados, setItensSelecionados] = useState<ItemAula[]>([])
   
   const [loading, setLoading] = useState(false)
   const [loadingBlocos, setLoadingBlocos] = useState(false)
@@ -61,6 +87,9 @@ function CriarAulaForm() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filtroDisciplina, setFiltroDisciplina] = useState('')
   const [filtroAno, setFiltroAno] = useState('')
+  
+  // 🎮 NOVO: Filtros para jogos
+  const [searchTermJogos, setSearchTermJogos] = useState('')
 
   const supabase = createSupabaseBrowserClient()
 
@@ -68,6 +97,7 @@ function CriarAulaForm() {
     loadAnosEscolares()
     loadDisciplinas()
     loadBlocosDisponiveis()
+    loadJogosDisponiveis() // 🎮 NOVO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -115,32 +145,89 @@ function CriarAulaForm() {
     }
   }
 
+  // 🎮 NOVO: Carregar jogos disponíveis
+  const loadJogosDisponiveis = async () => {
+    try {
+      setLoadingJogos(true)
+      const { data, error } = await supabase
+        .from('games')
+        .select('id, codigo, titulo, descricao, duracao_segundos, publicado, ano_escolar_id, disciplina_id')
+        .eq('publicado', true)
+        .order('titulo')
+      
+      if (error) {
+        console.error('Erro ao carregar jogos:', error)
+        return
+      }
+      
+      setJogosDisponiveis(data || [])
+      console.log('🎮 Jogos carregados:', data?.length || 0)
+    } catch (error) {
+      console.error('Erro ao carregar jogos:', error)
+    } finally {
+      setLoadingJogos(false)
+    }
+  }
+
+  // 🎮 NOVO: Adicionar bloco
   const handleAdicionarBloco = (bloco: BlocoTemplate) => {
-    if (!blocosSelecionados.find(b => b.id === bloco.id)) {
-      setBlocosSelecionados([...blocosSelecionados, bloco])
+    if (itensSelecionados.find(item => item.id === bloco.id && item.tipo === 'bloco')) {
+      return // Já selecionado
     }
+    
+    const novaOrdem = itensSelecionados.length + 1
+    setItensSelecionados([
+      ...itensSelecionados,
+      { tipo: 'bloco', id: bloco.id, ordem: novaOrdem, dados: bloco }
+    ])
   }
 
-  const handleRemoverBloco = (blocoId: string) => {
-    setBlocosSelecionados(blocosSelecionados.filter(b => b.id !== blocoId))
+  // 🎮 NOVO: Adicionar jogo
+  const handleAdicionarJogo = (jogo: Game) => {
+    if (itensSelecionados.find(item => item.id === jogo.id && item.tipo === 'jogo')) {
+      return // Já selecionado
+    }
+    
+    const novaOrdem = itensSelecionados.length + 1
+    setItensSelecionados([
+      ...itensSelecionados,
+      { tipo: 'jogo', id: jogo.id, ordem: novaOrdem, dados: jogo }
+    ])
   }
 
-  const handleMoverBloco = (index: number, direction: 'up' | 'down') => {
-    const newBlocos = [...blocosSelecionados]
+  // 🎮 NOVO: Remover item
+  const handleRemoverItem = (id: string, tipo: 'bloco' | 'jogo') => {
+    const novosItens = itensSelecionados
+      .filter(item => !(item.id === id && item.tipo === tipo))
+      .map((item, index) => ({ ...item, ordem: index + 1 })) // Recalcular ordens
+    
+    setItensSelecionados(novosItens)
+  }
+
+  // 🎮 NOVO: Mover item
+  const handleMoverItem = (index: number, direction: 'up' | 'down') => {
+    const novosItens = [...itensSelecionados]
     const targetIndex = direction === 'up' ? index - 1 : index + 1
-    
-    if (targetIndex < 0 || targetIndex >= newBlocos.length) return
-    
-    // Swap com verificação de tipo
-    const temp = newBlocos[index]
-    const target = newBlocos[targetIndex]
-    if (temp && target) {
-      newBlocos[index] = target
-      newBlocos[targetIndex] = temp
-      setBlocosSelecionados(newBlocos)
-    }
+
+    if (targetIndex < 0 || targetIndex >= novosItens.length) return
+
+    // Verificar se ambos os elementos existem
+    const itemAtual = novosItens[index]
+    const itemTarget = novosItens[targetIndex]
+
+    if (!itemAtual || !itemTarget) return
+
+    // Swap
+    novosItens[index] = itemTarget
+    novosItens[targetIndex] = itemAtual
+
+    // Recalcular ordens
+    novosItens.forEach((item, i) => item.ordem = i + 1)
+
+    setItensSelecionados(novosItens)
   }
 
+  // 🎮 ATUALIZADO: Submit com novo RPC
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
@@ -149,26 +236,34 @@ function CriarAulaForm() {
       return
     }
 
-    if (blocosSelecionados.length === 0) {
-      toast.error('Selecione pelo menos um bloco')
+    if (itensSelecionados.length === 0) {
+      toast.error('Selecione pelo menos um bloco ou jogo')
       return
     }
 
     try {
       setLoading(true)
 
+      // Preparar array JSONB para o RPC
+      const itensParaRPC = itensSelecionados.map(item => ({
+        tipo: item.tipo,
+        id: item.id,
+        ordem: item.ordem
+      }))
+
       console.log('📤 Enviando dados para criar aula:', {
         p_trilha_id: TRILHA_PADRAO_ID,
         p_titulo: form.titulo,
         p_descricao: form.descricao || null,
-        p_blocos_ids: blocosSelecionados.map(b => b.id)
+        p_itens: itensParaRPC
       })
 
-      const { data, error } = await supabase.rpc('insert_aula_with_blocos_admin', {
+      // 🎮 NOVO RPC: insert_aula_with_itens_admin
+      const { data, error } = await supabase.rpc('insert_aula_with_itens_admin', {
         p_trilha_id: TRILHA_PADRAO_ID,
         p_titulo: form.titulo,
         p_descricao: form.descricao || null,
-        p_blocos_ids: blocosSelecionados.map(b => b.id)
+        p_itens: itensParaRPC
       })
 
       console.log('📥 Resposta do RPC:', { data, error })
@@ -201,28 +296,52 @@ function CriarAulaForm() {
       bloco.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bloco.codigo_bloco.toLowerCase().includes(searchTerm.toLowerCase())
     
-    const matchDisciplina = !filtroDisciplina || 
-      bloco.disciplinas?.codigo === filtroDisciplina
+    const matchDisciplina = !filtroDisciplina ||
+      (bloco.disciplinas && Array.isArray(bloco.disciplinas) ?
+        bloco.disciplinas.some(d => d.codigo === filtroDisciplina) :
+        (bloco.disciplinas as { codigo: string } | null)?.codigo === filtroDisciplina)
 
     const matchAno = !filtroAno || 
       bloco.ano_escolar_id === filtroAno
 
-    const naoSelecionado = !blocosSelecionados.find(b => b.id === bloco.id)
+    const naoSelecionado = !itensSelecionados.find(item => item.id === bloco.id && item.tipo === 'bloco')
 
     return matchSearch && matchDisciplina && matchAno && naoSelecionado
   })
 
-  // Calcular pontos totais
-  const pontosTotais = blocosSelecionados.reduce((sum, b) => sum + (b.pontos_bloco || 0), 0)
+  // 🎮 NOVO: Filtrar jogos disponíveis
+  const jogosFiltrados = jogosDisponiveis.filter(jogo => {
+    const matchSearch = !searchTermJogos || 
+      jogo.titulo.toLowerCase().includes(searchTermJogos.toLowerCase()) ||
+      jogo.codigo.toLowerCase().includes(searchTermJogos.toLowerCase())
+    
+    const naoSelecionado = !itensSelecionados.find(item => item.id === jogo.id && item.tipo === 'jogo')
+
+    return matchSearch && naoSelecionado
+  })
+
+  // 🎮 ATUALIZADO: Calcular pontos totais (apenas blocos)
+  const pontosTotais = itensSelecionados
+    .filter(item => item.tipo === 'bloco')
+    .reduce((sum, item) => sum + ((item.dados as BlocoTemplate).pontos_bloco || 0), 0)
 
   // Detectar ano e disciplina automaticamente do primeiro bloco
-  const blocoReferencia = blocosSelecionados[0]
+  const primeiroBloco = itensSelecionados.find(item => item.tipo === 'bloco')
+  const blocoReferencia = primeiroBloco?.dados as BlocoTemplate | undefined
   const anoDetectado = blocoReferencia?.ano_escolar_id 
     ? anosEscolares.find(a => a.id === blocoReferencia.ano_escolar_id)
     : null
-  const disciplinaDetectada = blocoReferencia?.disciplinas 
-    ? disciplinas.find(d => d.codigo === blocoReferencia.disciplinas?.codigo)
-    : null
+  const disciplinaDetectada = (() => {
+    if (!blocoReferencia || !blocoReferencia.disciplinas) return null
+    if (Array.isArray(blocoReferencia.disciplinas)) {
+      const first = blocoReferencia.disciplinas[0]
+      if (!first) return null
+      return disciplinas.find(d => d.codigo === first.codigo) || null
+    }
+    const unica = blocoReferencia.disciplinas as { codigo?: string } | null
+    if (!unica || !unica.codigo) return null
+    return disciplinas.find(d => d.codigo === unica.codigo) || null
+  })()
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -237,7 +356,7 @@ function CriarAulaForm() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Criar Nova Aula</h1>
-          <p className="text-slate-600 mt-1">Selecione blocos templates para compor a aula</p>
+          <p className="text-slate-600 mt-1">Selecione blocos e jogos para compor a aula</p>
         </div>
       </div>
 
@@ -275,7 +394,7 @@ function CriarAulaForm() {
             </div>
 
             {/* Preview Automático: Ano e Disciplina */}
-            {blocosSelecionados.length > 0 && (anoDetectado || disciplinaDetectada) && (
+            {itensSelecionados.length > 0 && (anoDetectado || disciplinaDetectada) && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-blue-900 mb-2">
                   📊 Ano e Disciplina Detectados Automaticamente
@@ -307,152 +426,250 @@ function CriarAulaForm() {
           </div>
         </div>
 
-        {/* Seleção de Blocos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Blocos Disponíveis */}
-          <div className="bg-white border border-slate-200 rounded-lg p-6">
+        {/* 🎮 NOVO: Seleção de Blocos + Jogos (3 colunas) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Coluna 1: Blocos Disponíveis */}
+          <div className="bg-white border border-blue-200 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Blocos Disponíveis
+              📄 Blocos Disponíveis
               <span className="text-sm font-normal text-slate-600 ml-2">
-                ({blocosFiltrados.length} encontrados)
+                ({blocosFiltrados.length})
               </span>
             </h2>
-              <>
-                {/* Filtros */}
-                <div className="space-y-2 mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Buscar blocos..."
-                      className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <select
-                    value={filtroDisciplina}
-                    onChange={(e) => setFiltroDisciplina(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Todas as disciplinas</option>
-                    {disciplinas.map(disc => (
-                      <option key={disc.id} value={disc.codigo}>{disc.nome}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={filtroAno}
-                    onChange={(e) => setFiltroAno(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Todos os anos escolares</option>
-                    {anosEscolares.map(ano => (
-                      <option key={ano.id} value={ano.id}>{ano.nome}</option>
-                    ))}
-                  </select>
-                </div>
+            
+            {/* Filtros */}
+            <div className="space-y-2 mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar blocos..."
+                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md text-sm"
+                />
+              </div>
+              <select
+                value={filtroDisciplina}
+                onChange={(e) => setFiltroDisciplina(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              >
+                <option value="">Todas as disciplinas</option>
+                {disciplinas.map(disc => (
+                  <option key={disc.id} value={disc.codigo}>{disc.nome}</option>
+                ))}
+              </select>
+              <select
+                value={filtroAno}
+                onChange={(e) => setFiltroAno(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              >
+                <option value="">Todos os anos</option>
+                {anosEscolares.map(ano => (
+                  <option key={ano.id} value={ano.id}>{ano.nome}</option>
+                ))}
+              </select>
+            </div>
 
-                {/* Lista de Blocos */}
-                <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                  {loadingBlocos ? (
-                    <p className="text-slate-500 text-center py-8">Carregando blocos...</p>
-                  ) : blocosFiltrados.length === 0 ? (
-                    <p className="text-slate-500 text-center py-8">Nenhum bloco encontrado</p>
-                  ) : (
-                    blocosFiltrados.map((bloco) => (
-                      <div
-                        key={bloco.id}
-                        className="border border-slate-200 rounded-lg p-3 hover:border-blue-500 cursor-pointer transition-colors"
-                        onClick={() => handleAdicionarBloco(bloco)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium text-slate-900">{bloco.titulo}</p>
-                            <p className="text-xs text-slate-600 mt-1">
-                              {bloco.codigo_bloco} • {bloco.pontos_bloco} pts
-                              {bloco.disciplinas?.nome && ` • ${bloco.disciplinas.nome}`}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleAdicionarBloco(bloco)
-                            }}
-                          >
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
-          </div>
-
-          {/* Blocos Selecionados */}
-          <div className="bg-white border border-slate-200 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Blocos Selecionados
-              <span className="text-sm font-normal text-slate-600 ml-2">
-                ({blocosSelecionados.length} blocos • {pontosTotais} pts)
-              </span>
-            </h2>
-
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {blocosSelecionados.length === 0 ? (
-                <p className="text-slate-500 text-center py-8">
-                  Nenhum bloco selecionado ainda
-                </p>
+            {/* Lista de Blocos */}
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {loadingBlocos ? (
+                <p className="text-slate-500 text-center py-8 text-sm">Carregando...</p>
+              ) : blocosFiltrados.length === 0 ? (
+                <p className="text-slate-500 text-center py-8 text-sm">Nenhum bloco encontrado</p>
               ) : (
-                blocosSelecionados.map((bloco, index) => (
+                blocosFiltrados.map((bloco) => (
                   <div
                     key={bloco.id}
-                    className="border border-slate-200 rounded-lg p-3 bg-blue-50"
+                    className="border border-blue-200 rounded-lg p-3 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-colors"
+                    onClick={() => handleAdicionarBloco(bloco)}
                   >
-                    <div className="flex items-start gap-2">
-                      <div className="flex flex-col gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleMoverBloco(index, 'up')}
-                          disabled={index === 0}
-                          className="h-6 px-2"
-                        >
-                          ↑
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleMoverBloco(index, 'down')}
-                          disabled={index === blocosSelecionados.length - 1}
-                          className="h-6 px-2"
-                        >
-                          ↓
-                        </Button>
-                      </div>
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <p className="font-medium text-slate-900">
-                          {index + 1}. {bloco.titulo}
-                        </p>
+                        <p className="font-medium text-slate-900 text-sm">{bloco.titulo}</p>
                         <p className="text-xs text-slate-600 mt-1">
-                          {bloco.codigo_bloco} • {bloco.pontos_bloco} pts
+                          {bloco.pontos_bloco} pts
+                          {Array.isArray(bloco.disciplinas) && bloco.disciplinas.length > 0 && bloco.disciplinas[0]?.nome && ` • ${bloco.disciplinas[0].nome}`}
                         </p>
                       </div>
                       <Button
                         type="button"
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleRemoverBloco(bloco.id)}
+                        className="ml-2"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAdicionarBloco(bloco)
+                        }}
                       >
-                        <X className="w-4 h-4" />
+                        <Plus className="w-3 h-3" />
                       </Button>
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </div>
+
+          {/* 🎮 Coluna 2: Jogos Disponíveis (NOVO!) */}
+          <div className="bg-white border border-green-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              🎮 Jogos Disponíveis
+              <span className="text-sm font-normal text-slate-600 ml-2">
+                ({jogosFiltrados.length})
+              </span>
+            </h2>
+            
+            {/* Filtros */}
+            <div className="space-y-2 mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTermJogos}
+                  onChange={(e) => setSearchTermJogos(e.target.value)}
+                  placeholder="Buscar jogos..."
+                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Lista de Jogos */}
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {loadingJogos ? (
+                <p className="text-slate-500 text-center py-8 text-sm">Carregando jogos...</p>
+              ) : jogosFiltrados.length === 0 ? (
+                <div className="text-center py-8">
+                  <Gamepad2 className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                  <p className="text-slate-500 text-sm">Nenhum jogo publicado ainda</p>
+                  <p className="text-xs text-slate-400 mt-1">Crie jogos na Fábrica de Jogos</p>
+                </div>
+              ) : (
+                jogosFiltrados.map((jogo) => (
+                  <div
+                    key={jogo.id}
+                    className="border border-green-200 rounded-lg p-3 hover:border-green-500 hover:bg-green-50 cursor-pointer transition-colors"
+                    onClick={() => handleAdicionarJogo(jogo)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-900 text-sm flex items-center gap-2">
+                          <Gamepad2 className="w-3 h-3 text-green-600" />
+                          {jogo.titulo}
+                        </p>
+                        <p className="text-xs text-slate-600 mt-1">
+                          {jogo.duracao_segundos}s
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="ml-2 bg-green-600 hover:bg-green-700"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAdicionarJogo(jogo)
+                        }}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Coluna 3: Sequência da Aula (Itens Selecionados) */}
+          <div className="bg-white border border-purple-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              ✨ Sequência da Aula
+              <span className="text-sm font-normal text-slate-600 ml-2">
+                ({itensSelecionados.length} • {pontosTotais} pts)
+              </span>
+            </h2>
+
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {itensSelecionados.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-slate-500 text-sm mb-2">Nenhum item selecionado</p>
+                  <p className="text-xs text-slate-400">
+                    Adicione blocos ou jogos para compor a aula
+                  </p>
+                </div>
+              ) : (
+                itensSelecionados
+                  .sort((a, b) => a.ordem - b.ordem)
+                  .map((item, index) => {
+                    const isBloco = item.tipo === 'bloco'
+                    const dados = item.dados as BlocoTemplate | Game
+                    
+                    return (
+                      <div
+                        key={`${item.tipo}-${item.id}`}
+                        className={`border rounded-lg p-3 ${
+                          isBloco 
+                            ? 'bg-blue-50 border-blue-200' 
+                            : 'bg-green-50 border-green-200'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {/* Botões ↑↓ */}
+                          <div className="flex flex-col gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMoverItem(index, 'up')}
+                              disabled={index === 0}
+                              className="h-6 px-2 text-xs"
+                            >
+                              ↑
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMoverItem(index, 'down')}
+                              disabled={index === itensSelecionados.length - 1}
+                              className="h-6 px-2 text-xs"
+                            >
+                              ↓
+                            </Button>
+                          </div>
+                          
+                          {/* Ícone indicando tipo */}
+                          <div className={`w-8 h-8 rounded flex items-center justify-center text-lg ${
+                            isBloco ? 'bg-blue-200' : 'bg-green-200'
+                          }`}>
+                            {isBloco ? '📄' : '🎮'}
+                          </div>
+                          
+                          {/* Info do item */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-slate-900 text-sm truncate">
+                              {index + 1}. {dados.titulo}
+                            </p>
+                            <p className="text-xs text-slate-600">
+                              {isBloco
+                                ? `${(dados as BlocoTemplate).pontos_bloco} pts`
+                                : `${(dados as Game).duracao_segundos}s`
+                              }
+                            </p>
+                          </div>
+                          
+                          {/* Botão remover */}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRemoverItem(item.id, item.tipo)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })
               )}
             </div>
           </div>
@@ -470,7 +687,7 @@ function CriarAulaForm() {
           </Button>
           <Button
             type="submit"
-            disabled={loading || blocosSelecionados.length === 0}
+            disabled={loading || itensSelecionados.length === 0}
           >
             <Save className="w-4 h-4 mr-2" />
             {loading ? 'Criando...' : 'Criar Aula'}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useMemo } from 'react'
-import Phaser from 'phaser'
+import * as Phaser from 'phaser'
 import PhaserGame from './PhaserGame'
 import { AdventureRunnerScene } from '@/lib/games/scenes/AdventureRunnerScene'
 import { Button } from '@/components/ui/button'
@@ -72,7 +72,13 @@ export default function AdventureRunnerPlayer({
     
     // 🎵 Som de finalização/vitória
     playSound('/games/assets/sounds/correct.mp3', 0.8)
-  }, [playSound])
+
+    // ✅ Avançar automaticamente para o próximo bloco (sem "jogar de novo")
+    // dá um pequeno tempo para o usuário perceber a conclusão
+    setTimeout(() => {
+      onComplete(score, coinsCollected)
+    }, 800)
+  }, [playSound, onComplete])
 
   // Criar uma classe de cena customizada com os callbacks (memoizada)
   const SceneWithCallbacks = useMemo(() => {
@@ -81,7 +87,7 @@ export default function AdventureRunnerPlayer({
         super()
       }
       
-      init(data: any) {
+      init(data: Record<string, unknown>) {
         super.init({
           duration,
           onQuestionTrigger: handleQuestionTrigger,
@@ -150,6 +156,28 @@ export default function AdventureRunnerPlayer({
         gameConfig={gameConfig}
         onGameReady={handleGameReady}
       />
+
+      {/* 🎮 Controles Touch (joystick simples) - exibidos em telas touch */}
+      <div className="pointer-events-none absolute inset-0 z-[999] select-none md:hidden">
+        <div className="absolute bottom-4 left-4 flex gap-4">
+          {/* Botão ANDAR */}
+          <button
+            className="pointer-events-auto w-16 h-16 rounded-full bg-black/40 text-white text-2xl flex items-center justify-center active:bg-black/60"
+            onTouchStart={() => sceneRef.current?.setMobileRun(true)}
+            onTouchEnd={() => sceneRef.current?.setMobileRun(false)}
+            onMouseDown={() => sceneRef.current?.setMobileRun(true)}
+            onMouseUp={() => sceneRef.current?.setMobileRun(false)}
+            aria-label="Andar"
+          >➡️</button>
+          {/* Botão PULAR */}
+          <button
+            className="pointer-events-auto w-16 h-16 rounded-full bg-black/40 text-white text-2xl flex items-center justify-center active:bg-black/60"
+            onTouchStart={() => sceneRef.current?.jumpIfOnGround()}
+            onMouseDown={() => sceneRef.current?.jumpIfOnGround()}
+            aria-label="Pular"
+          >🆙</button>
+        </div>
+      </div>
       
       {/* Modal de Pergunta - Overlay mais sutil */}
       {showQuestion && currentQuestion && (
@@ -238,63 +266,12 @@ export default function AdventureRunnerPlayer({
         </div>
       )}
 
-      {/* 🏁 Tela Final do Jogo */}
+      {/* 🏁 Feedback rápido (sem replay) */}
       {gameFinished && (
-        <div 
-          className="absolute inset-0 bg-gradient-to-br from-green-600 via-blue-600 to-purple-600 flex items-center justify-center p-4"
-          style={{ zIndex: 10000 }}
-        >
-          <Card className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl text-center">
-            {/* Troféu */}
-            <div className="text-8xl mb-4">🏆</div>
-            
-            {/* Título */}
-            <h2 className="text-4xl font-bold text-slate-900 mb-2">
-              Parabéns!
-            </h2>
-            <p className="text-xl text-slate-600 mb-8">
-              Você completou o jogo!
-            </p>
-
-            {/* Estatísticas */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-xl p-6 border-4 border-yellow-400">
-                <div className="text-5xl mb-2">💰</div>
-                <div className="text-3xl font-bold text-yellow-800">{finalCoins}</div>
-                <div className="text-sm text-yellow-700 font-semibold">Moedas Coletadas</div>
-              </div>
-              
-              <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl p-6 border-4 border-purple-400">
-                <div className="text-5xl mb-2">⭐</div>
-                <div className="text-3xl font-bold text-purple-800">{finalScore}</div>
-                <div className="text-sm text-purple-700 font-semibold">Pontuação Final</div>
-              </div>
-            </div>
-
-            {/* Mensagem motivacional */}
-            <div className="bg-blue-50 rounded-xl p-4 mb-6">
-              <p className="text-lg text-blue-800 font-medium">
-                {finalCoins >= 15 ? '🌟 Incrível! Você é um mestre!' :
-                 finalCoins >= 10 ? '👏 Muito bem! Continue assim!' :
-                 '💪 Bom trabalho! Tente novamente para coletar mais moedas!'}
-              </p>
-            </div>
-
-            {/* Botões */}
-            <div className="flex gap-4">
-              <Button
-                onClick={() => window.location.reload()}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 text-lg"
-              >
-                🔄 Jogar Novamente
-              </Button>
-              <Button
-                onClick={() => onComplete(finalScore, finalCoins)}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 text-lg"
-              >
-                ✅ Finalizar
-              </Button>
-            </div>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 10000 }}>
+          <Card className="bg-white/90 rounded-2xl p-6 shadow-2xl text-center">
+            <div className="text-4xl mb-2">🏆</div>
+            <div className="text-lg font-semibold">Jogo concluído! Avançando...</div>
           </Card>
         </div>
       )}

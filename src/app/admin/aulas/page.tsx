@@ -337,6 +337,12 @@ export default function AulasPage() {
                               </div>
                               <div className="flex gap-2 ml-4">
                                 <Button
+                                  size="sm"
+                                  onClick={() => router.push(`/admin/aulas/${aula.id}/preview`)}
+                                >
+                                  Preview
+                                </Button>
+                                <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => router.push(`/admin/aulas/${aula.id}`)}
@@ -409,6 +415,12 @@ export default function AulasPage() {
                           </div>
                         </div>
                         <div className="flex gap-2 ml-4">
+                          <Button
+                            size="sm"
+                            onClick={() => router.push(`/admin/aulas/${aula.id}/preview`)}
+                          >
+                            Preview
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

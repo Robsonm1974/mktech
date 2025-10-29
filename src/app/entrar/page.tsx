@@ -127,13 +127,18 @@ function EntrarPageContent() {
 
   const handleStudentSelect = (alunoId: string) => {
     setStudentId(alunoId)
-    // Buscar ícone do aluno
+    // Buscar ícone do aluno e setar automaticamente
     const sessionData = JSON.parse(sessionStorage.getItem('currentSession') || '{}')
     const aluno = sessionData.alunos?.find((a: { id: string; icone_afinidade: string }) => a.id === alunoId)
     
     if (aluno?.icone_afinidade) {
       setSelectedIcon(aluno.icone_afinidade)
+      console.log('✅ Ícone do aluno setado automaticamente:', aluno.icone_afinidade)
     }
+    
+    // Limpar estados anteriores
+    setPin('')
+    setError('')
     
     setStep('auth')
   }
@@ -178,9 +183,12 @@ function EntrarPageContent() {
         throw new Error('PIN incorreto')
       }
 
+      // ✅ REMOVIDO: Não precisa mais validar ícone, pois é setado automaticamente
+      // O ícone já foi validado ao selecionar o aluno
       if (aluno.icone_afinidade !== selectedIcon) {
-        console.error('❌ Ícone incorreto. Esperado:', aluno.icone_afinidade, 'Fornecido:', selectedIcon)
-        throw new Error('Ícone incorreto')
+        console.error('❌ ERRO CRÍTICO: Ícone não corresponde ao aluno selecionado')
+        console.error('   Esperado:', aluno.icone_afinidade, 'Fornecido:', selectedIcon)
+        throw new Error('Erro de autenticação. Tente novamente.')
       }
 
       console.log('✅ Validação bem-sucedida!')
@@ -194,7 +202,8 @@ function EntrarPageContent() {
         timestamp: Date.now()
       }
 
-      localStorage.setItem('studentSession', JSON.stringify(studentSession))
+      const storageKey = `studentSession:${sessionData.sessionId}`
+      sessionStorage.setItem(storageKey, JSON.stringify(studentSession))
       
       console.log('✅ StudentSession salva:', studentSession)
       console.log('🚀 Redirecionando para:', `/sessao/${sessionData.sessionId}`)
@@ -210,7 +219,10 @@ function EntrarPageContent() {
     } catch (err) {
       console.error('❌ Erro na autenticação:', err)
       setError(err instanceof Error ? err.message : 'Erro na autenticação')
+      // ✅ CORRIGIDO: Sempre resetar loading em caso de erro
       setLoading(false)
+      // ✅ CORRIGIDO: Resetar PIN para permitir nova tentativa
+      setPin('')
     }
   }
 
@@ -367,96 +379,107 @@ function EntrarPageContent() {
     )
   }
 
-  const renderAuthStep = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <Card className="rounded-3xl shadow-2xl border-0 bg-white/95 backdrop-blur-md overflow-hidden">
-        <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-6 text-center">
-          <div className="text-6xl mb-3">🔐</div>
-          <h2 className="text-3xl font-black text-white mb-2">Autenticação</h2>
-          <p className="text-white/90 font-medium">Confirme seu ícone e digite seu PIN</p>
-        </div>
+  const renderAuthStep = () => {
+    const sessionData = JSON.parse(sessionStorage.getItem('currentSession') || '{}')
+    const alunoSelecionado = sessionData.alunos?.find((a: { id: string; full_name: string; icone_afinidade: string }) => a.id === studentId)
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white/95 backdrop-blur-md overflow-hidden">
+          <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-6 text-center">
+            <div className="text-6xl mb-3">🔐</div>
+            <h2 className="text-3xl font-black text-white mb-2">Autenticação</h2>
+            <p className="text-white/90 font-medium">Confirme sua identidade</p>
+          </div>
 
-        <CardContent className="p-8">
-          <form onSubmit={handleAuthSubmit} className="space-y-6">
-            {/* Seleção de Ícone */}
-            <div className="space-y-3">
-              <Label className="text-lg font-bold text-gray-700">Seu ícone de afinidade</Label>
-              <div className="grid grid-cols-2 gap-4">
-                {icons.map((icon) => (
-                  <motion.button
-                    key={icon}
-                    type="button"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setSelectedIcon(icon)}
-                    className={`h-24 rounded-2xl text-5xl transition-all ${
-                      selectedIcon === icon
-                        ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] shadow-xl scale-105 border-4 border-purple-300'
-                        : 'bg-white border-4 border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {getEmojiFromIcon(icon)}
-                  </motion.button>
-                ))}
+          <CardContent className="p-8">
+            {/* Mostrar aluno selecionado */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mb-8 p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-3xl border-4 border-purple-200"
+            >
+              <p className="text-sm text-gray-600 font-medium text-center mb-3">Você selecionou:</p>
+              <div className="flex items-center justify-center gap-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-2xl flex items-center justify-center text-5xl shadow-lg">
+                  {getEmojiFromIcon(alunoSelecionado?.icone_afinidade || '')}
+                </div>
+                <div className="text-left">
+                  <p className="text-2xl font-black text-gray-800">{alunoSelecionado?.full_name}</p>
+                  <p className="text-sm text-gray-600 font-medium">Este é seu ícone</p>
+                </div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* PIN */}
-            <div className="space-y-3">
-              <Label htmlFor="pin" className="text-lg font-bold text-gray-700">
-                PIN (4 dígitos)
-              </Label>
-              <Input
-                id="pin"
-                type="password"
-                placeholder="••••"
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                inputMode="numeric"
-                maxLength={4}
-                className="text-center text-4xl font-black py-6 rounded-2xl border-4 border-purple-200 focus:border-purple-500 transition-all tracking-widest"
-                required
-              />
-            </div>
+            <form onSubmit={handleAuthSubmit} className="space-y-6">
+              {/* PIN */}
+              <div className="space-y-3">
+                <Label htmlFor="pin" className="text-lg font-bold text-gray-700 text-center block">
+                  Digite seu PIN (4 dígitos)
+                </Label>
+                <Input
+                  id="pin"
+                  type="password"
+                  placeholder="••••"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  inputMode="numeric"
+                  maxLength={4}
+                  className="text-center text-4xl font-black py-6 rounded-2xl border-4 border-purple-200 focus:border-purple-500 transition-all tracking-widest"
+                  required
+                  autoFocus
+                />
+              </div>
 
-            {error && (
-              <Alert variant="destructive" className="rounded-xl">
-                <AlertDescription className="font-medium">{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="space-y-3">
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
-                  type="submit"
-                  className="w-full py-6 rounded-2xl text-xl font-black bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:shadow-2xl transition-all"
-                  disabled={loading || !selectedIcon || pin.length !== 4}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
                 >
-                  {loading && <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
-                  {loading ? 'Entrando...' : 'Entrar na Aula 🎯'}
-                </Button>
-              </motion.div>
-              
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setStep('student')}
-                className="w-full py-4 rounded-2xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 transition-all flex items-center justify-center gap-2"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Voltar
-              </motion.button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
+                  <Alert variant="destructive" className="rounded-xl">
+                    <AlertDescription className="font-medium text-center">{error}</AlertDescription>
+                  </Alert>
+                </motion.div>
+              )}
+
+              <div className="space-y-3">
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    type="submit"
+                    className="w-full py-6 rounded-2xl text-xl font-black bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:shadow-2xl transition-all"
+                    disabled={loading || pin.length !== 4}
+                  >
+                    {loading && <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
+                    {loading ? 'Entrando...' : 'Entrar na Aula 🎯'}
+                  </Button>
+                </motion.div>
+                
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setStep('student')
+                    setPin('')
+                    setError('')
+                  }}
+                  className="w-full py-4 rounded-2xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                  Voltar
+                </motion.button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </motion.div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2] py-8 px-4 flex items-center justify-center">

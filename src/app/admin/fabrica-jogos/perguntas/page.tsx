@@ -116,12 +116,12 @@ export default function BancoPerguntasPage() {
           let disciplinaNome = null
 
           if (p.ano_escolar_id) {
-            const ano = anosCarregados.find(a => a.id === p.ano_escolar_id)
+            const ano = anosCarregados.find((a: { id: string; nome: string }) => a.id === p.ano_escolar_id)
             anoNome = ano?.nome || null
           }
 
           if (p.disciplina_id) {
-            const disc = disciplinasCarregadas.find(d => d.id === p.disciplina_id)
+            const disc = disciplinasCarregadas.find((d: { id: string; nome: string }) => d.id === p.disciplina_id)
             disciplinaNome = disc?.nome || null
           }
 
@@ -369,6 +369,7 @@ export default function BancoPerguntasPage() {
                       checked={opcao.correta}
                       onChange={(e) => {
                         const novasOpcoes = [...formData.opcoes]
+                        if (!novasOpcoes[index]) return
                         novasOpcoes[index].correta = e.target.checked
                         setFormData({ ...formData, opcoes: novasOpcoes })
                       }}
@@ -378,6 +379,7 @@ export default function BancoPerguntasPage() {
                       value={opcao.texto}
                       onChange={(e) => {
                         const novasOpcoes = [...formData.opcoes]
+                        if (!novasOpcoes[index]) return
                         novasOpcoes[index].texto = e.target.value
                         setFormData({ ...formData, opcoes: novasOpcoes })
                       }}

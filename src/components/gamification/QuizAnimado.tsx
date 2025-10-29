@@ -117,6 +117,10 @@ export function QuizAnimado({
     setIsSubmitting(true)
     playSound('click')
 
+    if (!pergunta) {
+      setIsSubmitting(false)
+      return
+    }
     const correto = respostaSelecionada === pergunta.correctIndex
     const novaTentativa = tentativaAtual + 1
 
@@ -264,16 +268,18 @@ export function QuizAnimado({
               exit={{ opacity: 0, x: -50 }}
               transition={{ duration: 0.3 }}
             >
-              <h3 className="text-2xl font-bold text-gray-800 mb-8">
-                {pergunta.prompt}
-              </h3>
+              {pergunta && (
+                <h3 className="text-2xl font-bold text-gray-800 mb-8">
+                  {pergunta.prompt}
+                </h3>
+              )}
 
               {/* Opções */}
               <div className="space-y-3 mb-6">
-                {pergunta.choices.map((opcao, index) => {
+                {(pergunta?.choices || []).map((opcao, index) => {
                   const isSelected = respostaSelecionada === index
-                  const isCorrect = feedback.show && index === pergunta.correctIndex
-                  const isWrong = feedback.show && isSelected && index !== pergunta.correctIndex
+                  const isCorrect = feedback.show && pergunta && index === pergunta.correctIndex
+                  const isWrong = feedback.show && isSelected && pergunta && index !== pergunta.correctIndex
 
                   return (
                     <motion.button

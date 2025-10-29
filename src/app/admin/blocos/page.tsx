@@ -176,6 +176,15 @@ export default function BlocosPage() {
         </div>
         <div className="flex gap-2">
           <Button
+            onClick={() => {
+              const destino = filtroAno ? `/admin/blocos/importar?ano=${filtroAno}` : '/admin/blocos/importar'
+              router.push(destino)
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Criar Blocos (Planejamento)
+          </Button>
+          <Button
             variant="outline"
             onClick={async () => {
               await Promise.all([loadAnosEscolares(), loadBlocos()])

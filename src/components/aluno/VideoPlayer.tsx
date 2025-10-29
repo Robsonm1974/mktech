@@ -19,11 +19,11 @@ export default function VideoPlayer({ url, onComplete }: VideoPlayerProps) {
     // YouTube
     if (originalUrl.includes('youtube.com/watch?v=')) {
       const videoId = originalUrl.split('v=')[1]?.split('&')[0]
-      return `https://www.youtube.com/embed/${videoId}?enablejsapi=1`
+      return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&playsinline=1&modestbranding=1&rel=0&autohide=1&iv_load_policy=3`
     }
     if (originalUrl.includes('youtu.be/')) {
       const videoId = originalUrl.split('youtu.be/')[1]?.split('?')[0]
-      return `https://www.youtube.com/embed/${videoId}?enablejsapi=1`
+      return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&playsinline=1&modestbranding=1&rel=0&autohide=1&iv_load_policy=3`
     }
     
     // Vimeo
@@ -68,15 +68,23 @@ export default function VideoPlayer({ url, onComplete }: VideoPlayerProps) {
     )
   }
 
+  const withOrigin = `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}fs=1&origin=${typeof window !== 'undefined' ? encodeURIComponent(location.origin) : ''}`
+
   return (
-    <div className="aspect-video w-full">
-      <iframe
-        src={embedUrl}
-        className="w-full h-full"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        title="Video Player"
-      />
+    <div className="w-full">
+      <div className="relative w-full pb-[56.25%] bg-black rounded-2xl overflow-hidden shadow-2xl">
+        <iframe
+          src={withOrigin}
+          className="absolute top-0 left-0 w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          title="Video Player"
+          style={{ border: 'none' }}
+        />
+      </div>
+      <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-200 md:hidden">
+        <p className="text-xs text-blue-800 text-center">Toque no botão de tela cheia para melhor experiência.</p>
+      </div>
     </div>
   )
 }

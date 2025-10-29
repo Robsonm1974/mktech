@@ -11,6 +11,7 @@ import { Loader2, Play, Trophy, Star, CheckCircle2, Lock, AlertCircle, Sparkles,
 import { toast } from '@/hooks/use-toast'
 import { QuizAnimado, FloatingPoints, TransitionScreen, ConfettiCelebration } from '@/components/gamification'
 import { useSound } from '@/hooks/useSound'
+import AdventureRunnerPlayer from '@/components/games/AdventureRunnerPlayer'
 
 // ============================================================================
 // INTERFACES
@@ -43,7 +44,23 @@ interface Quiz {
 
 interface BlocoWithOrder extends BlocoTemplate {
   ordem: number
+  tipo: 'bloco' // Para identificar que é um bloco
 }
+
+// 🎮 Interface para Jogos
+interface GameItem {
+  tipo: 'jogo'
+  id: string
+  ordem: number
+  titulo: string
+  descricao: string | null
+  duracao_segundos: number
+  codigo: string
+  configuracao: Record<string, unknown>
+}
+
+// Tipo unificado para Blocos + Jogos
+type ItemAula = BlocoWithOrder | GameItem
 
 interface Participacao {
   id: string
@@ -90,9 +107,11 @@ export default function SessaoPage() {
   // Dados da sessão
   const [aula, setAula] = useState<{ id: string; titulo: string; descricao: string } | null>(null)
   const [blocos, setBlocos] = useState<BlocoWithOrder[]>([])
+  const [itensAula, setItensAula] = useState<ItemAula[]>([]) // 🎮 TODOS os itens (blocos + jogos)
   const [participacao, setParticipacao] = useState<Participacao | null>(null)
   
-  // Estado do bloco atual
+  // Estado do item atual (bloco ou jogo)
+  const [itemAtual, setItemAtual] = useState<ItemAula | undefined>(undefined)
   const [blocoAtual, setBlocoAtual] = useState<BlocoWithOrder | null>(null)
   const [blocoAtivo, setBlocoAtivo] = useState(false)
   const [blocoConteudoVisto, setBlocoConteudoVisto] = useState(false)
@@ -151,10 +170,35 @@ export default function SessaoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
+  // 🎮 Sincronizar itemAtual com blocoAtual
+  useEffect(() => {
+    if (blocoAtual && itensAula.length > 0) {
+      const itemCorrespondente = itensAula.find(item =>
+        item.tipo === 'bloco' && item.id === blocoAtual.id
+      )
+      if (itemCorrespondente) {
+        setItemAtual(itemCorrespondente)
+        console.log('✅ Item atual sincronizado com bloco:', itemCorrespondente.titulo)
+      }
+    }
+  }, [blocoAtual, itensAula])
+
+  // 🎮 Função para encontrar o próximo item na sequência
+  const findProximoItem = (itemAtual: ItemAula | null | undefined): ItemAula | null => {
+    if (!itemAtual || itensAula.length === 0) return null
+
+    const currentIndex = itensAula.findIndex(item => item.id === itemAtual.id && item.tipo === itemAtual.tipo)
+    if (currentIndex === -1 || currentIndex >= itensAula.length - 1) return null
+
+    const proximoItem = itensAula[currentIndex + 1]
+    return proximoItem || null
+  }
+
   const initializeSession = async () => {
     try {
-      // 1. Carregar dados do aluno do localStorage
-      const studentData = localStorage.getItem('studentSession')
+      // 1. Carregar dados do aluno do sessionStorage (namespaced por sessão)
+      const storageKey = `studentSession:${sessionId}`
+      const studentData = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null
       if (!studentData) {
         toast({
           title: 'Erro',
@@ -168,15 +212,32 @@ export default function SessaoPage() {
       const student: StudentSession = JSON.parse(studentData)
       setStudentSession(student)
 
+      console.log('🔵 Iniciando registro de entrada na sessão...')
+      console.log('   Session ID:', sessionId)
+      console.log('   Aluno ID:', student.alunoId)
+
       // 2. Registrar entrada do aluno na sessão
       const { data: entradaData, error: entradaError } = await supabase.rpc('aluno_entrar_sessao', {
         p_session_id: sessionId,
         p_aluno_id: student.alunoId
       })
 
-      if (entradaError || !entradaData.success) {
-        throw new Error(entradaData?.message || 'Erro ao entrar na sessão')
+      console.log('📊 Resultado entrada:', entradaData)
+      console.log('❌ Erro entrada:', entradaError)
+
+      if (entradaError) {
+        console.error('❌ ERRO RPC:', entradaError)
+        throw new Error(`Erro RPC: ${entradaError.message}`)
       }
+
+      if (!entradaData || !entradaData.success) {
+        console.error('❌ RPC retornou success=false')
+        const errorMsg = entradaData?.message || 'Erro desconhecido ao entrar na sessão'
+        throw new Error(errorMsg)
+      }
+
+      console.log('✅ Entrada registrada com sucesso!')
+      console.log('   Participação ID:', entradaData.participacao_id)
 
       setParticipacaoId(entradaData.participacao_id)
 
@@ -184,12 +245,16 @@ export default function SessaoPage() {
       await loadSessionData(student.alunoId)
 
     } catch (error) {
-      console.error('Erro ao inicializar:', error)
+      console.error('❌ ERRO AO INICIALIZAR:', error)
       toast({
-        title: 'Erro',
+        title: 'Erro ao entrar na sessão',
         description: error instanceof Error ? error.message : 'Erro ao carregar sessão',
         variant: 'destructive'
       })
+      // Retornar para página de entrada após 3 segundos
+      setTimeout(() => {
+        router.push('/entrar')
+      }, 3000)
     } finally {
       setLoading(false)
     }
@@ -221,41 +286,79 @@ export default function SessaoPage() {
 
       setAula(aulaData as { id: string; titulo: string; descricao: string })
 
-      // Buscar blocos da aula usando RPC (bypass RLS)
-      console.log('🔍 Buscando blocos para session_id:', sessionId)
+      // 🎮 NOVO: Buscar blocos + jogos da aula usando RPC
+      console.log('🔍 Buscando itens (blocos + jogos) para session_id:', sessionId)
       
-      const { data: blocosResponse, error: blocosError } = await supabase.rpc(
-        'get_blocos_sessao',
+      const { data: itensResponse, error: itensError } = await supabase.rpc(
+        'get_itens_aula_sessao',
         { p_session_id: sessionId }
       )
 
-      console.log('📦 Resultado blocosResponse:', blocosResponse)
-      console.log('❌ Erro blocosError:', blocosError)
+      console.log('📦 Resultado itensResponse:', itensResponse)
+      console.log('❌ Erro itensError:', itensError)
 
-      if (blocosError || !blocosResponse?.success) {
-        console.error('❌ ERRO:', blocosError || blocosResponse?.error)
-        throw new Error('Erro ao carregar blocos: ' + (blocosError?.message || blocosResponse?.error || 'Erro desconhecido'))
+      if (itensError || !itensResponse?.success) {
+        console.error('❌ ERRO:', itensError || itensResponse?.error)
+        throw new Error('Erro ao carregar itens: ' + (itensError?.message || itensResponse?.error || 'Erro desconhecido'))
       }
 
-      // Transformar blocos do formato RPC
+      // 🎮 NOVO: Processar TODOS os itens (blocos + jogos)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const blocosTransformados: BlocoWithOrder[] = (blocosResponse.blocos || []).map((bloco: any) => ({
-        id: bloco.id,
-        titulo: bloco.titulo,
-        conteudo_texto: bloco.conteudo_texto,
-        tipo_midia: bloco.tipo_midia,
-        midia_url: bloco.midia_url,
-        midia_metadata: bloco.midia_metadata,
-        pontos_bloco: bloco.pontos_bloco,
-        quiz_id: bloco.quiz_id,
-        quizzes: bloco.quiz,
-        ordem: bloco.ordem_na_aula
-      }))
+      const todosItens = itensResponse.itens || []
+      console.log('📦 Total de itens retornados:', todosItens.length)
+      console.log('📄 Blocos:', todosItens.filter((i: { tipo: string }) => i.tipo === 'bloco').length)
+      console.log('🎮 Jogos:', todosItens.filter((i: { tipo: string }) => i.tipo === 'jogo').length)
+      
+      // Processar blocos
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const blocosTransformados: BlocoWithOrder[] = todosItens
+        .filter((item: { tipo: string }) => item.tipo === 'bloco')
+        .map((bloco: {
+          id: string; titulo: string; conteudo_texto: string; tipo_midia: string;
+          midia_url: string; midia_metadata: Record<string, unknown>; pontos_bloco: number; quiz_id: string;
+          quiz: Quiz | null; ordem_na_aula: number
+        }) => ({
+          id: bloco.id,
+          titulo: bloco.titulo,
+          conteudo_texto: bloco.conteudo_texto,
+          tipo_midia: bloco.tipo_midia,
+          midia_url: bloco.midia_url,
+          midia_metadata: bloco.midia_metadata,
+          pontos_bloco: bloco.pontos_bloco,
+          quiz_id: bloco.quiz_id,
+          quizzes: bloco.quiz,
+          ordem: bloco.ordem_na_aula,
+          tipo: 'bloco' as const
+        }))
+
+      // 🎮 Processar jogos
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const jogosTransformados: GameItem[] = todosItens
+        .filter((item: { tipo: string }) => item.tipo === 'jogo')
+        .map((jogo: {
+          id: string; titulo: string; descricao: string; duracao_segundos: number;
+          codigo: string; configuracao: Record<string, unknown>; ordem_na_aula: number
+        }) => ({
+          tipo: 'jogo' as const,
+          id: jogo.id,
+          ordem: jogo.ordem_na_aula,
+          titulo: jogo.titulo,
+          descricao: jogo.descricao,
+          duracao_segundos: jogo.duracao_segundos,
+          codigo: jogo.codigo,
+          configuracao: jogo.configuracao
+        }))
+
+      // 🎯 Combinar blocos + jogos em ordem
+      const todosItensOrdenados: ItemAula[] = [...blocosTransformados, ...jogosTransformados]
+        .sort((a, b) => a.ordem - b.ordem)
 
       console.log('📦 Blocos transformados:', blocosTransformados)
-      console.log('📊 Total de blocos:', blocosTransformados.length)
+      console.log('🎮 Jogos transformados:', jogosTransformados)
+      console.log('📊 Itens totais ordenados:', todosItensOrdenados.length)
 
       setBlocos(blocosTransformados)
+      setItensAula(todosItensOrdenados) // 🎯 Salvar TODOS os itens
 
       // Se não há blocos, mostrar erro
       if (blocosTransformados.length === 0) {
@@ -288,12 +391,40 @@ export default function SessaoPage() {
 
       if (progressoError) {
         console.error('❌ Erro detalhado:', progressoError)
+        toast({
+          title: 'Erro ao carregar progresso',
+          description: 'Não foi possível carregar o progresso do aluno. Verifique se a sessão foi iniciada corretamente.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      if (!progressoData) {
+        console.error('❌ progressoData está vazio/null')
+        toast({
+          title: 'Erro',
+          description: 'Nenhum dado de progresso retornado. Execute a migration SQL necessária.',
+          variant: 'destructive'
+        })
         return
       }
 
       if (progressoData) {
         console.log('✅ Participação:', progressoData.participacao)
         console.log('✅ Blocos progresso:', progressoData.blocos)
+        
+        if (!progressoData.participacao) {
+          console.error('❌ progressoData.participacao está null')
+          toast({
+            title: 'Erro de Participação',
+            description: 'Dados de participação não encontrados. Recomece o login.',
+            variant: 'destructive'
+          })
+          setTimeout(() => {
+            router.push('/entrar')
+          }, 2000)
+          return
+        }
         
         setParticipacao(progressoData.participacao)
 
@@ -306,12 +437,13 @@ export default function SessaoPage() {
         if (blocoAtivoData) {
           const blocoEncontrado = blocosDisponiveis.find(b => b.id === blocoAtivoData.bloco_id)
           console.log('📦 Bloco correspondente:', blocoEncontrado)
-          
+
           if (blocoEncontrado) {
             setBlocoAtual(blocoEncontrado)
             console.log('✅ Bloco atual definido!')
           } else {
             console.warn('⚠️ Bloco não encontrado na lista de blocos')
+            setBlocoAtual(null)
           }
         } else {
           console.warn('⚠️ Nenhum bloco com status "active" encontrado')
@@ -325,7 +457,7 @@ export default function SessaoPage() {
             // FALLBACK: Se não encontrou progresso, iniciar com primeiro bloco
             if (blocosDisponiveis.length > 0) {
               console.log('🔄 FALLBACK: Usando primeiro bloco da lista')
-              setBlocoAtual(blocosDisponiveis[0])
+              setBlocoAtual(blocosDisponiveis[0] || null)
               setParticipacao({
                 id: '',
                 bloco_atual_numero: 1,
@@ -342,7 +474,7 @@ export default function SessaoPage() {
         // FALLBACK: Se não tem progresso, iniciar com primeiro bloco
         if (blocosDisponiveis.length > 0) {
           console.log('🔄 FALLBACK: Usando primeiro bloco da lista')
-          setBlocoAtual(blocosDisponiveis[0])
+          setBlocoAtual(blocosDisponiveis[0] || null)
           setParticipacao({
             id: '',
             bloco_atual_numero: 1,
@@ -355,6 +487,40 @@ export default function SessaoPage() {
       }
     } catch (error) {
       console.error('❌ Erro ao carregar progresso:', error)
+    }
+  }
+
+  // 🎮 Função para completar jogo
+  const handleCompletarJogo = async () => {
+    if (!itemAtual || itemAtual.tipo !== 'jogo') return
+
+    console.log('🎮 Completando jogo:', itemAtual?.titulo || 'Jogo sem título')
+
+    // Para jogos, vamos usar uma lógica simplificada
+    // por enquanto, apenas avançar para o próximo item
+    const proximoItem = findProximoItem(itemAtual)
+
+    if (proximoItem) {
+      setItemAtual(proximoItem)
+
+      if (proximoItem.tipo === 'bloco') {
+        const proximoBloco = blocos.find(b => b.id === proximoItem.id)
+        if (proximoBloco) {
+          setBlocoAtual(proximoBloco)
+        }
+      }
+
+      toast({
+        title: "🎉 Jogo Concluído!",
+        description: "Avançando para o próximo item...",
+      })
+    } else {
+      // Sessão completa
+      setMostrarCelebracao(true)
+      toast({
+        title: "🏆 Sessão Completa!",
+        description: "Parabéns! Você completou todos os itens!",
+      })
     }
   }
 
@@ -413,7 +579,7 @@ export default function SessaoPage() {
         blocoAtual.quizzes.perguntas.forEach((_, idx) => {
           const tentativa = tentativas[idx]
           if (tentativa === -1) acertos++
-          else if (tentativa > 0) erros++
+          else if (tentativa && tentativa > 0) erros++
         })
       }
 
@@ -425,14 +591,14 @@ export default function SessaoPage() {
       // Se sessão completa - mostrar celebração
       if (data.sessao_completa) {
         playSound('levelup')
-        
+
         // Calcular estatísticas finais
         const totalAcertos = participacao?.blocos_completados || 0
         const totalPontos = participacao?.pontos_ganhos_sessao || 0
         const performance = totalPerguntas > 0 ? (acertos / totalPerguntas) * 100 : 100
 
         setMostrarCelebracao(true)
-        
+
         // Resetar estados
         setBlocoAtivo(false)
         setBlocoConteudoVisto(false)
@@ -442,9 +608,51 @@ export default function SessaoPage() {
         return
       }
 
-      // Encontrar próximo bloco
+      // 🎮 NOVO: Verificar se o item atual é um jogo e processar adequadamente
+      if (itemAtual?.tipo === 'jogo') {
+        console.log('🎮 Jogo completado, avançando para próximo item...')
+
+        // Mostrar pontos do jogo (se disponível)
+        toast({
+          title: "🎉 Jogo Concluído!",
+          description: `+${blocoAtual.pontos_bloco} pontos`,
+        })
+
+        // Encontrar próximo item
+        const proximoItem = findProximoItem(itemAtual)
+
+        if (proximoItem) {
+          console.log('🎯 Próximo item encontrado:', proximoItem.titulo)
+
+          // Preparar dados da transição
+          setDadosTransicao({
+            blocoAnterior: {
+              titulo: itemAtual.titulo,
+              tempoGasto,
+              acertos,
+              erros,
+              pontosGanhos: blocoAtual.pontos_bloco,
+              totalPerguntas
+            },
+            proximoBloco: {
+              titulo: proximoItem.titulo,
+              tipo: proximoItem.tipo === 'jogo' ? 'jogo' : (proximoItem as BlocoWithOrder).tipo_midia || 'conteudo'
+            }
+          })
+
+          // Mostrar tela de transição
+          setMostrarTransicao(true)
+          return
+        } else {
+          // Sessão completa
+          setMostrarCelebracao(true)
+          return
+        }
+      }
+
+      // Encontrar próximo bloco (lógica original para blocos)
       const blocoAtualIndex = blocos.findIndex(b => b.id === blocoAtual.id)
-      const proximoBloco = blocoAtualIndex < blocos.length - 1 
+      const proximoBloco = blocoAtualIndex < blocos.length - 1
         ? blocos[blocoAtualIndex + 1]
         : null
 
@@ -481,7 +689,41 @@ export default function SessaoPage() {
   const handleContinuarAposTransicao = () => {
     setMostrarTransicao(false)
     setDadosTransicao(null)
-    
+
+    // 🎮 NOVO: Navegar para o próximo item se disponível
+    if (itemAtual) {
+      const proximoItem = findProximoItem(itemAtual)
+
+      if (proximoItem) {
+        console.log('🎯 Navegando para próximo item:', proximoItem)
+        setItemAtual(proximoItem)
+
+        // Se for um jogo, apenas definir como atual
+        if (proximoItem.tipo === 'jogo') {
+          console.log('🎮 Próximo item é um jogo')
+          // Para jogos, não precisamos do fluxo de "iniciar" como nos blocos
+          return
+        }
+
+        // Se for um bloco, encontrar o correspondente e definir
+        if (proximoItem.tipo === 'bloco') {
+          const proximoBloco = blocos.find(b => b.id === proximoItem.id)
+          if (proximoBloco) {
+            setBlocoAtual(proximoBloco)
+            console.log('📦 Próximo bloco definido:', proximoBloco.titulo)
+          }
+        }
+      } else {
+        console.log('🏁 Fim da sessão - nenhum item seguinte')
+        // Se não há próximo item, verificar se a sessão está completa
+        if (participacao &&
+            (participacao.status === 'completed' ||
+             participacao.blocos_completados === participacao.total_blocos)) {
+          setMostrarCelebracao(true)
+        }
+      }
+    }
+
     // Resetar estados
     setBlocoAtivo(false)
     setBlocoConteudoVisto(false)
@@ -724,6 +966,26 @@ export default function SessaoPage() {
           </Card>
         )
 
+      case 'html5':
+        return (
+          <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
+            <iframe
+              src={blocoAtual.midia_url}
+              className="w-full h-full"
+              title="HTML5 Game"
+              allow="fullscreen; gamepad; autoplay"
+              allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              onLoad={() => {
+                // Quando o jogo carrega, aguardar um tempo e então permitir completar
+                setTimeout(() => {
+                  handleConteudoVistoCompleto()
+                }, 2000) // 2 segundos para o jogo carregar
+              }}
+            />
+          </div>
+        )
+
       default:
         return (
           <Card className="rounded-3xl shadow-xl border-0">
@@ -838,8 +1100,36 @@ export default function SessaoPage() {
     )
   }
 
+  // Verificar se ainda não carregou a participação
+  if (!participacao && !loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full rounded-3xl shadow-2xl border-0">
+          <CardHeader className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <CardTitle className="text-2xl font-black">Erro ao Carregar</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Não foi possível carregar os dados da participação.
+              <br />
+              <br />
+              Isso pode ocorrer se você não entrou corretamente na sessão.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              onClick={() => router.push('/entrar')}
+              className="w-full py-6 rounded-2xl text-lg font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2]"
+            >
+              Voltar ao Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   // Tela de conclusão da sessão
-  if (participacao?.status === 'completed' || participacao?.blocos_completados === participacao?.total_blocos) {
+  if (participacao && (participacao.status === 'completed' || participacao.blocos_completados === participacao.total_blocos)) {
     return (
       <>
         <audio ref={audioRef} />
@@ -882,7 +1172,7 @@ export default function SessaoPage() {
                 <Button 
                   onClick={() => {
                     playSound('click')
-                    window.location.href = '/entrar'
+                    window.location.href = '/meu-perfil'
                   }} 
                   variant="outline" 
                   size="lg" 
@@ -964,8 +1254,38 @@ export default function SessaoPage() {
             </CardHeader>
           </Card>
 
+          {/* 🎮 Renderizar Jogo se item atual for jogo */}
+          {itemAtual && itemAtual.tipo === 'jogo' && (
+            <Card className="rounded-3xl shadow-2xl border-0 bg-white">
+              <CardHeader>
+                <CardTitle className="text-2xl font-black text-gray-800">
+                  🎮 {itemAtual.titulo}
+                </CardTitle>
+                <CardDescription className="text-base">
+                  Duração: {Math.floor(itemAtual.duracao_segundos / 60)} minutos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AdventureRunnerPlayer
+                  questions={[]} // TODO: Carregar perguntas do jogo
+                  duration={itemAtual.duracao_segundos}
+                  onComplete={(score: number, coinsCollected: number) => {
+                    console.log('🎮 Jogo completado!', { score, coinsCollected })
+                    toast({
+                      title: "🎉 Jogo Concluído!",
+                      description: `Parabéns! Você coletou ${coinsCollected} moedas!`,
+                    })
+                    // 🎮 Usar a função específica para completar jogo
+                    handleCompletarJogo()
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Conteúdo do Bloco */}
-          {!blocoAtivo ? (
+          {itemAtual && itemAtual.tipo === 'bloco' && (
+            !blocoAtivo ? (
             <Card className="rounded-3xl shadow-2xl border-0 bg-white">
               <CardHeader>
                 <CardTitle className="text-2xl font-black flex items-center gap-3">
@@ -988,7 +1308,7 @@ export default function SessaoPage() {
                 </Button>
               </CardContent>
             </Card>
-          ) : (
+            ) : (
             <>
               {!blocoConteudoVisto && (
                 <Card className="rounded-3xl shadow-2xl border-0 bg-white">
@@ -1028,8 +1348,21 @@ export default function SessaoPage() {
                 </Card>
               )}
             </>
+            )
           )}
         </div>
+      </div>
+
+      {/* Ações de sessão */}
+      <div className="fixed top-4 right-4 z-50 flex gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            const key = `studentSession:${sessionId}`
+            if (typeof window !== 'undefined') sessionStorage.removeItem(key)
+            router.replace(`/entrar?sessionId=${sessionId}&v=${Date.now()}`)
+          }}
+        >Trocar aluno</Button>
       </div>
 
       {/* FloatingPoints - Animação de pontos */}

@@ -2,9 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,6 +33,14 @@ export async function middleware(request: NextRequest) {
   // Se tem sessão, tentar refresh para manter viva
   if (session) {
     await supabase.auth.refreshSession()
+  }
+
+  // Forçar no-cache em rotas críticas de sessão do aluno
+  const noStorePaths = ['/entrar', '/sessao/', '/dashboard/professor/sessao/']
+  if (noStorePaths.some(p => request.nextUrl.pathname.startsWith(p))) {
+    supabaseResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    supabaseResponse.headers.set('Pragma', 'no-cache')
+    supabaseResponse.headers.set('Expires', '0')
   }
 
   // Proteger rotas /admin/*

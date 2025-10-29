@@ -104,7 +104,7 @@ export function TransitionScreen({
     } else if (isBom) {
       playSound('correct')
     } else {
-      playSound('complete')
+      playSound('complete-session')
     }
   }, [])
 

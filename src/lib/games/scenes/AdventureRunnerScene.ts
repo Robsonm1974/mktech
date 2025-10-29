@@ -1,4 +1,4 @@
-import Phaser from 'phaser'
+import * as Phaser from 'phaser'
 
 /**
  * Cena principal do Adventure Runner
@@ -49,6 +49,7 @@ export class AdventureRunnerScene extends Phaser.Scene {
   // Callbacks para React
   private onQuestionTrigger?: (questionIndex: number) => void
   private onGameComplete?: (finalScore: number, coinsCollected: number) => void
+  private mobileRun: boolean = false
 
   constructor() {
     super({ key: 'AdventureRunnerScene' })
@@ -162,19 +163,51 @@ export class AdventureRunnerScene extends Phaser.Scene {
     this.chests = this.physics.add.group()
     this.createChests()
     this.physics.add.collider(this.chests, this.platforms)
-    this.physics.add.overlap(this.player, this.chests, this.collectChest, undefined, this)
+    this.physics.add.overlap(
+      this.player,
+      this.chests,
+      // Phaser chama com (object1, object2)
+      (_object1, object2) => {
+        const obj2 = object2 as unknown as Phaser.GameObjects.GameObject
+        this.collectChest(this.player as unknown as Phaser.GameObjects.GameObject, obj2)
+      },
+      undefined,
+      this
+    )
     
     // Criar moedas espalhadas
     this.coins = this.physics.add.group()
     this.createCoins()
     this.physics.add.collider(this.coins, this.platforms)
-    this.physics.add.overlap(this.player, this.coins, this.collectCoin, undefined, this)
+    this.physics.add.overlap(
+      this.player,
+      this.coins,
+      (_object1, object2) => {
+        this.collectCoin(
+          this.player as unknown as Phaser.GameObjects.GameObject,
+          object2 as unknown as Phaser.GameObjects.GameObject
+        )
+      },
+      undefined,
+      this
+    )
     
     // Criar inimigos
     this.enemies = this.physics.add.group()
     this.createEnemies()
     this.physics.add.collider(this.enemies, this.platforms)
-    this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, undefined, this)
+    this.physics.add.overlap(
+      this.player,
+      this.enemies,
+      (_object1, object2) => {
+        this.hitEnemy(
+          this.player as unknown as Phaser.GameObjects.GameObject,
+          object2 as unknown as Phaser.GameObjects.GameObject
+        )
+      },
+      undefined,
+      this
+    )
     
     // Controles teclado
     this.cursors = this.input.keyboard!.createCursorKeys()
@@ -201,8 +234,8 @@ export class AdventureRunnerScene extends Phaser.Scene {
     // ✅ MUDANÇA: Remover check de isGameActive - jogo sempre ativo!
     if (!this.isGameActive) return // Apenas para quando o jogo terminar (tempo zerado)
     
-    // Movimentação horizontal (APENAS DIREITA quando apertar tecla)
-    if (this.cursors.right.isDown || this.cursors.left.isDown) {
+    // Movimentação horizontal (teclado OU controle mobile)
+    if (this.mobileRun || this.cursors.right.isDown || this.cursors.left.isDown) {
       // Correr para frente quando apertar
       this.player.setVelocityX(250)
       this.player.flipX = false
@@ -338,7 +371,7 @@ export class AdventureRunnerScene extends Phaser.Scene {
     
     // No update, verificar se está tocando para correr
     this.events.on('update', () => {
-      if (touching && this.isGameActive) {
+      if ((touching || this.mobileRun) && this.isGameActive) {
         const pointer = this.input.activePointer
         if (pointer.x < this.cameras.main.width * 0.7) {
           this.player.setVelocityX(250)
@@ -346,6 +379,20 @@ export class AdventureRunnerScene extends Phaser.Scene {
         }
       }
     })
+  }
+
+  /** Controle vindo do overlay React */
+  public setMobileRun(active: boolean) {
+    this.mobileRun = active
+  }
+
+  /** Pular se estiver no chão (para overlay mobile) */
+  public jumpIfOnGround() {
+    if (this.player && (this.player.body as Phaser.Physics.Arcade.Body)?.touching?.down) {
+      this.player.setVelocityY(-400)
+      this.player.anims.play('jump', true)
+      if (this.jumpSound) this.jumpSound.play()
+    }
   }
 
   private collectChest(
@@ -550,7 +597,7 @@ export class AdventureRunnerScene extends Phaser.Scene {
    */
   private createTemporaryAssets() {
     // Criar textura de plataforma programaticamente
-    const graphics = this.make.graphics({ x: 0, y: 0, add: false })
+    const graphics = this.make.graphics({ x: 0, y: 0 })
     graphics.fillStyle(0x4CAF50, 1)
     graphics.fillRect(0, 0, 32, 32)
     graphics.generateTexture('platform', 32, 32)

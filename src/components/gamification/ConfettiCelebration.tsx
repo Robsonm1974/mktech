@@ -138,7 +138,7 @@ export function ConfettiCelebration({
       })
 
       // Som de celebração
-      playSound('levelup')
+      playSound('level-up')
 
       // Explosão inicial
       setTimeout(() => {
