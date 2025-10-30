@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client-browser'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Trophy, Target, Zap, Award, ArrowLeft } from 'lucide-react'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { toast } from 'sonner'
 
 // Tipos
 interface StudentSession {
@@ -63,8 +65,10 @@ interface ProfileData {
   }>
 }
 
-export default function MeuPerfilPage() {
+function MeuPerfilContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, isSchoolAdmin, loading: authLoading } = useAuth()
   const supabase = createSupabaseBrowserClient()
   const [loading, setLoading] = useState(true)
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
@@ -72,65 +76,94 @@ export default function MeuPerfilPage() {
 
   // Carregar dados do perfil
   useEffect(() => {
+    // Aguardar autenticação carregar antes de executar
+    if (authLoading) {
+      return
+    }
+    
     loadProfile()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [searchParams, authLoading, user])
 
   const loadProfile = async () => {
     try {
-      // Compatibilidade: primeiro tenta sessionStorage (novo), depois localStorage (legado)
-      let session: StudentSession | null = null
+      let alunoId: string | null = null
+      const alunoIdParam = searchParams?.get('aluno_id')
 
-      // Buscar a última sessão de aluno ativa no sessionStorage (chaves studentSession:*)
-      try {
-        const keys: string[] = Object.keys(sessionStorage)
-          .filter((k) => k.startsWith('studentSession:'))
-        if (keys.length > 0) {
-          // usa a mais recente (ordem do storage não é garantida, mas geralmente a última inserida fica no fim)
-          const chosenKey = keys[keys.length - 1] as string
-          const value = sessionStorage.getItem(chosenKey)
-          if (value) session = JSON.parse(value)
+      // CASO 1: Há aluno_id na URL (admin visualizando perfil de outro aluno)
+      if (alunoIdParam) {
+        // Aguardar autenticação carregar antes de verificar permissões
+        if (authLoading) {
+          return // Aguarda o próximo ciclo quando authLoading for false
         }
-      } catch {}
 
-      // Fallback legado
-      if (!session) {
-        const legacy = localStorage.getItem('studentSession')
-        if (legacy) {
-          try { session = JSON.parse(legacy) } catch {}
+        // Verificar se é admin
+        if (isSchoolAdmin() || user?.role === 'admin_escola') {
+          alunoId = alunoIdParam
+        } else {
+          // Não é admin, redirecionar
+          console.error('Acesso negado: apenas administradores podem visualizar perfis de outros alunos')
+          toast.error('Acesso negado. Você precisa ser administrador para visualizar perfis de alunos.')
+          router.push('/dashboard/admin-escola/alunos')
+          return
         }
+      } else {
+        // CASO 2: NÃO há aluno_id (aluno visualizando seu próprio perfil) - LÓGICA ORIGINAL PRESERVADA
+        // Compatibilidade: primeiro tenta sessionStorage (novo), depois localStorage (legado)
+        let session: StudentSession | null = null
+
+        // Buscar a última sessão de aluno ativa no sessionStorage (chaves studentSession:*)
+        try {
+          const keys: string[] = Object.keys(sessionStorage)
+            .filter((k) => k.startsWith('studentSession:'))
+          if (keys.length > 0) {
+            // usa a mais recente (ordem do storage não é garantida, mas geralmente a última inserida fica no fim)
+            const chosenKey = keys[keys.length - 1] as string
+            const value = sessionStorage.getItem(chosenKey)
+            if (value) session = JSON.parse(value)
+          }
+        } catch {}
+
+        // Fallback legado
+        if (!session) {
+          const legacy = localStorage.getItem('studentSession')
+          if (legacy) {
+            try { session = JSON.parse(legacy) } catch {}
+          }
+        }
+
+        if (!session || !session.alunoId) {
+          router.push('/entrar')
+          return
+        }
+
+        alunoId = session.alunoId
       }
 
-      if (!session || !session.alunoId) {
+      if (!alunoId) {
         router.push('/entrar')
         return
       }
 
-      // Buscar dados do aluno
-      const { data: alunoData, error } = await supabase
-        .from('alunos')
-        .select(`
-          id,
-          full_name,
-          icone_afinidade,
-          turmas (name),
-          tenants (name)
-        `)
-        .eq('id', session.alunoId)
-        .single()
+      // Buscar dados do aluno usando RPC pública (bypass RLS)
+      const { data: alunoData, error } = await supabase.rpc(
+        'get_student_profile',
+        { p_aluno_id: alunoId }
+      )
+
+      console.log('📊 Dados do perfil (RPC):', alunoData)
+      console.log('❌ Erro (RPC):', error)
 
       if (error || !alunoData) {
         console.error('Erro ao carregar perfil:', error)
+        toast.error('Erro ao carregar dados do aluno.')
         setLoading(false)
         return
       }
 
-      // Extrair dados
-      const turmas = alunoData.turmas as unknown as { name: string } | Array<{ name: string }> | null
-      const tenants = alunoData.tenants as unknown as { name: string } | Array<{ name: string }> | null
-      
-      const turmaNome = Array.isArray(turmas) ? turmas[0]?.name : turmas?.name
-      const escolaNome = Array.isArray(tenants) ? tenants[0]?.name : tenants?.name
+      // Dados já vêm no formato correto da RPC
+      const turmaNome = alunoData.turma_nome
+      const escolaNome = alunoData.escola_nome
 
       // MOCK DATA (substituir por dados reais quando backend estiver pronto)
       const mockProfile: ProfileData = {
@@ -475,5 +508,17 @@ export default function MeuPerfilPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function MeuPerfilPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2]">
+        <div className="text-white text-2xl font-bold">Carregando perfil...</div>
+      </div>
+    }>
+      <MeuPerfilContent />
+    </Suspense>
   )
 }

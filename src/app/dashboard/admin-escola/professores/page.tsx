@@ -127,20 +127,22 @@ export default function ProfessoresPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="rounded-xl border-2 hover:bg-gray-50">
             <Link href="/dashboard/admin-escola">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Professores</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent mb-2">
+              Professores 👨‍🏫
+            </h1>
+            <p className="text-lg text-gray-600 font-semibold">
               Gerencie os professores da escola
             </p>
           </div>
         </div>
-        <Button asChild>
+        <Button asChild className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white border-0 shadow-lg rounded-xl">
           <Link href="/dashboard/admin-escola/professores/novo">
             <Plus className="w-4 h-4 mr-2" />
             Adicionar Professor
@@ -149,42 +151,57 @@ export default function ProfessoresPage() {
       </div>
 
       {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white hover:scale-[1.02] transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-semibold text-gray-600">
               Total de Professores
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">
-              {professores.length}
+            <div className="flex items-center justify-between">
+              <div className="text-4xl font-black bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                {professores.length}
+              </div>
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
+                <Users className="h-7 w-7 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white hover:scale-[1.02] transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-semibold text-gray-600">
               Professores Ativos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              {professores.filter(p => p.active).length}
+            <div className="flex items-center justify-between">
+              <div className="text-4xl font-black bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
+                {professores.filter(p => p.active).length}
+              </div>
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
+                <Users className="h-7 w-7 text-green-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white hover:scale-[1.02] transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-semibold text-gray-600">
               Total de Turmas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600">
-              {professores.reduce((acc, p) => acc + (p._count?.turmas || 0), 0)}
+            <div className="flex items-center justify-between">
+              <div className="text-4xl font-black bg-gradient-to-r from-purple-tallet-600 to-purple-400 bg-clip-text text-transparent">
+                {professores.reduce((acc, p) => acc + (p._count?.turmas || 0), 0)}
+              </div>
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center">
+                <GraduationCap className="h-7 w-7 text-purple-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -217,35 +234,35 @@ export default function ProfessoresPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {professores.map((professor) => (
-            <Card key={professor.id} className="hover:shadow-md transition-shadow">
+            <Card key={professor.id} className="rounded-3xl shadow-xl border-0 bg-white hover:shadow-2xl hover:scale-[1.01] transition-all duration-200">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4 flex-1">
-                    <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Users className="h-6 w-6 text-blue-600" />
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center shadow-lg">
+                      <Users className="h-7 w-7 text-blue-600" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-xl font-bold text-gray-900">
                           {professor.full_name || 'Sem nome'}
                         </h3>
                         {!professor.active && (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">
+                          <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full">
                             Inativo
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Mail className="w-4 h-4" />
-                          <span>{professor.email}</span>
+                      <div className="flex items-center gap-6 text-sm text-gray-600 mb-2">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">{professor.email}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <GraduationCap className="w-4 h-4" />
-                          <span>{professor._count?.turmas || 0} turmas</span>
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">{professor._count?.turmas || 0} turmas</span>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 font-medium">
                         Cadastrado em: {new Date(professor.created_at).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
@@ -255,6 +272,7 @@ export default function ProfessoresPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleToggleActive(professor.id, professor.active)}
+                      className="rounded-xl border-2"
                     >
                       {professor.active ? 'Desativar' : 'Ativar'}
                     </Button>
@@ -262,6 +280,7 @@ export default function ProfessoresPage() {
                       variant="outline"
                       size="sm"
                       asChild
+                      className="rounded-xl border-2 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100"
                     >
                       <Link href={`/dashboard/admin-escola/professores/${professor.id}`}>
                         Ver Detalhes

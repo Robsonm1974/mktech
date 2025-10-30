@@ -261,9 +261,11 @@ export default function ProfessorDashboard() {
                           Iniciar Sessão
                         </Link>
                       </Button>
-                      <Button variant="outline" className="w-full" size="sm">
-                        <Users className="h-4 w-4 mr-2" />
-                        Ver Alunos
+                      <Button asChild variant="outline" className="w-full" size="sm">
+                        <Link href={`/dashboard/professor/turmas/${turma.id}/alunos`}>
+                          <Users className="h-4 w-4 mr-2" />
+                          Ver Alunos
+                        </Link>
                       </Button>
                     </div>
                   </div>

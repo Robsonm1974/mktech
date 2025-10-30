@@ -3,13 +3,25 @@
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { User, LogOut, Settings, ChevronDown, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
 export function Navbar() {
+  const pathname = usePathname()
   const { user, signOut, isAdmin, isSchoolAdmin, isProfessor } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Não renderizar Navbar nas páginas do admin-escola e professor (elas têm o ModernNavbar próprio)
+  if (pathname?.startsWith('/dashboard/admin-escola') || pathname?.startsWith('/dashboard/professor')) {
+    return null
+  }
+
+  // Verificar se está em páginas do escopo do aluno (entrar, sessão, perfil)
+  const isStudentScope = pathname === '/entrar' || 
+                         pathname?.startsWith('/sessao/') || 
+                         pathname === '/meu-perfil'
 
   const handleSignOut = async () => {
     await signOut()
@@ -65,90 +77,96 @@ export function Navbar() {
               </Link>
             </div>
             
-            <div className="hidden md:flex items-center space-x-8">
-              <a 
-                href="#recursos" 
-                onClick={(e) => handleSmoothScroll(e, '#recursos')}
-                className="text-white font-semibold hover:opacity-80 transition-opacity"
-              >
-                Recursos
-              </a>
-              <a 
-                href="#como-funciona" 
-                onClick={(e) => handleSmoothScroll(e, '#como-funciona')}
-                className="text-white font-semibold hover:opacity-80 transition-opacity"
-              >
-                Como Funciona
-              </a>
-              <a 
-                href="#precos" 
-                onClick={(e) => handleSmoothScroll(e, '#precos')}
-                className="text-white font-semibold hover:opacity-80 transition-opacity"
-              >
-                Preços
-              </a>
-              <a 
-                href="#faq" 
-                onClick={(e) => handleSmoothScroll(e, '#faq')}
-                className="text-white font-semibold hover:opacity-80 transition-opacity"
-              >
-                FAQ
-              </a>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="text-white font-semibold hover:opacity-80 transition-opacity flex items-center gap-1">
-                    Logins
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <a href="/admin/login" className="cursor-pointer">
-                      Admin MKTECH
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href="/auth/login" className="cursor-pointer">
-                      Escola
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href="/auth/login" className="cursor-pointer">
-                      Professor
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href="/entrar" className="cursor-pointer">
-                      Aluno
-                    </a>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            {!isStudentScope && (
+              <>
+                <div className="hidden md:flex items-center space-x-8">
+                  <a 
+                    href="#recursos" 
+                    onClick={(e) => handleSmoothScroll(e, '#recursos')}
+                    className="text-white font-semibold hover:opacity-80 transition-opacity"
+                  >
+                    Recursos
+                  </a>
+                  <a 
+                    href="#como-funciona" 
+                    onClick={(e) => handleSmoothScroll(e, '#como-funciona')}
+                    className="text-white font-semibold hover:opacity-80 transition-opacity"
+                  >
+                    Como Funciona
+                  </a>
+                  <a 
+                    href="#precos" 
+                    onClick={(e) => handleSmoothScroll(e, '#precos')}
+                    className="text-white font-semibold hover:opacity-80 transition-opacity"
+                  >
+                    Preços
+                  </a>
+                  <a 
+                    href="#faq" 
+                    onClick={(e) => handleSmoothScroll(e, '#faq')}
+                    className="text-white font-semibold hover:opacity-80 transition-opacity"
+                  >
+                    FAQ
+                  </a>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="text-white font-semibold hover:opacity-80 transition-opacity flex items-center gap-1">
+                        Logins
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem asChild>
+                        <a href="/admin/login" className="cursor-pointer">
+                          Admin MKTECH
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href="/auth/login" className="cursor-pointer">
+                          Escola
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href="/auth/login" className="cursor-pointer">
+                          Professor
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href="/entrar" className="cursor-pointer">
+                          Aluno
+                        </a>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
 
-            <a 
-              href="https://wa.me/5541995999648" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden md:block bg-white text-[#667eea] px-6 py-2 rounded-full font-bold hover:shadow-xl transition-all hover:-translate-y-0.5"
-            >
-              Teste Grátis
-            </a>
+                <a 
+                  href="https://wa.me/5541995999648" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden md:block bg-white text-[#667eea] px-6 py-2 rounded-full font-bold hover:shadow-xl transition-all hover:-translate-y-0.5"
+                >
+                  Teste Grátis
+                </a>
+              </>
+            )}
 
-            {/* Botão Hambúrguer Mobile */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
-              aria-label="Menu"
-              type="button"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            {/* Botão Hambúrguer Mobile - só mostrar se não for escopo de aluno */}
+            {!isStudentScope && (
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+                aria-label="Menu"
+                type="button"
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            )}
           </div>
 
-          {/* Menu Mobile - Dropdown */}
-          {mobileMenuOpen && (
+          {/* Menu Mobile - Dropdown - só mostrar se não for escopo de aluno */}
+          {!isStudentScope && mobileMenuOpen && (
             <div className="md:hidden pb-4 pt-2 space-y-3 animate-in slide-in-from-top-2 duration-200">
               <a 
                 href="#recursos" 

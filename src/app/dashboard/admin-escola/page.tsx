@@ -124,119 +124,119 @@ export default function AdminEscolaDashboard() {
     : 0
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Bem-vindo, {user.full_name || user.email}!
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Painel Administrativo - {tenantName}
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/admin-escola/configuracoes">
-              <Settings className="w-4 h-4 mr-2" />
-              Configurações
-            </Link>
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent mb-2">
+          Bem-vindo, {user.full_name || user.email}! 👋
+        </h1>
+        <p className="text-lg text-gray-600 font-semibold">
+          Painel Administrativo - {tenantName}
+        </p>
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white hover:scale-[1.02] transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-semibold text-gray-600">
               Professores
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold text-blue-600">
+              <div className="text-4xl font-black bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
                 {loadingStats ? '...' : stats.totalProfessores}
               </div>
-              <Users className="h-8 w-8 text-blue-600 opacity-50" />
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
+                <Users className="h-7 w-7 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white hover:scale-[1.02] transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-semibold text-gray-600">
               Turmas
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold text-green-600">
+              <div className="text-4xl font-black bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
                 {loadingStats ? '...' : stats.totalTurmas}
               </div>
-              <GraduationCap className="h-8 w-8 text-green-600 opacity-50" />
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
+                <GraduationCap className="h-7 w-7 text-green-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white hover:scale-[1.02] transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-semibold text-gray-600">
               Alunos Ativos
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold text-purple-600">
+              <div className="text-4xl font-black bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">
                 {loadingStats ? '...' : stats.totalAlunos}
               </div>
-              <BookOpen className="h-8 w-8 text-purple-600 opacity-50" />
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center">
+                <BookOpen className="h-7 w-7 text-purple-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white hover:scale-[1.02] transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-semibold text-gray-600">
               Vagas Ocupadas
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold text-orange-600">
+                <div className="text-4xl font-black bg-gradient-to-r from-orange-600 to-orange-400 bg-clip-text text-transparent">
                   {ocupacaoPercentual}%
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1 font-medium">
                   {stats.seatsUsed} de {stats.seatsTotal}
                 </p>
               </div>
-              <BarChart3 className="h-8 w-8 text-orange-600 opacity-50" />
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center">
+                <BarChart3 className="h-7 w-7 text-orange-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Cards de Ações Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card className="rounded-3xl shadow-2xl border-0 bg-gradient-to-br from-blue-50 to-blue-100/50 hover:scale-[1.02] transition-all duration-200 cursor-pointer">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <Users className="h-8 w-8 text-blue-600" />
-              <ChevronRight className="h-5 w-5 text-gray-400" />
+            <div className="flex items-center justify-between mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-blue-600" />
             </div>
-            <CardTitle className="text-lg">Professores</CardTitle>
-            <CardDescription className="text-sm">
+            <CardTitle className="text-xl font-bold text-gray-800">Professores</CardTitle>
+            <CardDescription className="text-sm text-gray-600 font-medium">
               Gerencie os professores da escola
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button asChild className="w-full" size="sm">
+            <Button asChild className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white border-0 shadow-lg" size="sm">
               <Link href="/dashboard/admin-escola/professores">
                 Ver Professores
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full" size="sm">
+            <Button asChild variant="outline" className="w-full border-blue-300 text-blue-700 hover:bg-blue-50" size="sm">
               <Link href="/dashboard/admin-escola/professores/novo">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Professor
@@ -245,24 +245,26 @@ export default function AdminEscolaDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+        <Card className="rounded-3xl shadow-2xl border-0 bg-gradient-to-br from-green-50 to-green-100/50 hover:scale-[1.02] transition-all duration-200 cursor-pointer">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <GraduationCap className="h-8 w-8 text-green-600" />
-              <ChevronRight className="h-5 w-5 text-gray-400" />
+            <div className="flex items-center justify-between mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg">
+                <GraduationCap className="h-6 w-6 text-white" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-green-600" />
             </div>
-            <CardTitle className="text-lg">Turmas</CardTitle>
-            <CardDescription className="text-sm">
+            <CardTitle className="text-xl font-bold text-gray-800">Turmas</CardTitle>
+            <CardDescription className="text-sm text-gray-600 font-medium">
               Organize as turmas e anos escolares
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button asChild className="w-full" size="sm">
+            <Button asChild className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white border-0 shadow-lg" size="sm">
               <Link href="/dashboard/admin-escola/turmas">
                 Ver Turmas
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full" size="sm">
+            <Button asChild variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-50" size="sm">
               <Link href="/dashboard/admin-escola/turmas/nova">
                 <Plus className="w-4 h-4 mr-2" />
                 Criar Turma
@@ -271,24 +273,26 @@ export default function AdminEscolaDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+        <Card className="rounded-3xl shadow-2xl border-0 bg-gradient-to-br from-purple-50 to-purple-100/50 hover:scale-[1.02] transition-all duration-200 cursor-pointer">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <BookOpen className="h-8 w-8 text-purple-600" />
-              <ChevronRight className="h-5 w-5 text-gray-400" />
+            <div className="flex items-center justify-between mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-purple-600" />
             </div>
-            <CardTitle className="text-lg">Alunos</CardTitle>
-            <CardDescription className="text-sm">
+            <CardTitle className="text-xl font-bold text-gray-800">Alunos</CardTitle>
+            <CardDescription className="text-sm text-gray-600 font-medium">
               Cadastre e gerencie os alunos
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button asChild className="w-full" size="sm">
+            <Button asChild className="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white border-0 shadow-lg" size="sm">
               <Link href="/dashboard/admin-escola/alunos">
                 Ver Alunos
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full" size="sm">
+            <Button asChild variant="outline" className="w-full border-purple-300 text-purple-700 hover:bg-purple-50" size="sm">
               <Link href="/dashboard/admin-escola/alunos/novo">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Aluno
@@ -299,19 +303,23 @@ export default function AdminEscolaDashboard() {
       </div>
 
       {/* Ações Secundárias */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="rounded-3xl shadow-2xl border-0 bg-gradient-to-br from-indigo-50 to-indigo-100/50 hover:scale-[1.02] transition-all duration-200">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Relatórios
-            </CardTitle>
-            <CardDescription>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-xl font-bold text-gray-800">
+                Relatórios
+              </CardTitle>
+            </div>
+            <CardDescription className="text-sm text-gray-600 font-medium">
               Acompanhe o desempenho da escola
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild variant="outline" className="w-full">
+            <Button asChild className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white border-0 shadow-lg" size="lg">
               <Link href="/dashboard/admin-escola/relatorios">
                 Ver Relatórios
               </Link>
@@ -319,18 +327,22 @@ export default function AdminEscolaDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-3xl shadow-2xl border-0 bg-gradient-to-br from-gray-50 to-gray-100/50 hover:scale-[1.02] transition-all duration-200">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Configurações
-            </CardTitle>
-            <CardDescription>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center shadow-lg">
+                <Settings className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-xl font-bold text-gray-800">
+                Configurações
+              </CardTitle>
+            </div>
+            <CardDescription className="text-sm text-gray-600 font-medium">
               Ajustes e preferências da escola
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild variant="outline" className="w-full">
+            <Button asChild className="w-full bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-700 hover:to-gray-600 text-white border-0 shadow-lg" size="lg">
               <Link href="/dashboard/admin-escola/configuracoes">
                 Acessar Configurações
               </Link>
@@ -341,22 +353,23 @@ export default function AdminEscolaDashboard() {
 
       {/* Guia de Primeiros Passos */}
       {stats.totalProfessores === 0 || stats.totalTurmas === 0 || stats.totalAlunos === 0 ? (
-        <Card className="mt-8 border-blue-200 bg-blue-50">
+        <Card className="mt-8 rounded-3xl shadow-2xl border-0 bg-gradient-to-br from-amber-50 to-amber-100/50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-900">
-              🚀 Primeiros Passos
+            <CardTitle className="flex items-center gap-2 text-amber-900 text-xl font-bold">
+              <span className="text-2xl">🚀</span>
+              Primeiros Passos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ol className="list-decimal list-inside space-y-2 text-gray-700">
+            <ol className="list-decimal list-inside space-y-3 text-gray-700 font-medium">
               {stats.totalProfessores === 0 && (
-                <li>Adicione professores à escola</li>
+                <li className="text-amber-900">Adicione professores à escola</li>
               )}
               {stats.totalTurmas === 0 && (
-                <li>Crie turmas para organizar os alunos</li>
+                <li className="text-amber-900">Crie turmas para organizar os alunos</li>
               )}
               {stats.totalAlunos === 0 && (
-                <li>Cadastre os alunos nas turmas</li>
+                <li className="text-amber-900">Cadastre os alunos nas turmas</li>
               )}
               <li>Oriente os professores a fazer login e iniciar sessões</li>
               <li>Acompanhe o progresso pelos relatórios</li>

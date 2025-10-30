@@ -435,8 +435,9 @@ export default function AlunosPage() {
                       variant="outline"
                       size="sm"
                       asChild
+                      title="Ver Perfil"
                     >
-                      <Link href={`/dashboard/admin-escola/alunos/${aluno.id}`}>
+                      <Link href={`/meu-perfil?aluno_id=${aluno.id}`}>
                         <Eye className="w-4 h-4" />
                       </Link>
                     </Button>

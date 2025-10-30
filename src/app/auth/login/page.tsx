@@ -170,26 +170,42 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#f093fb] py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Elementos decorativos de fundo */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-40 h-40 bg-purple-300/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-blue-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
+
+      <div className="max-w-md w-full space-y-8 relative z-10">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">MKTECH</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="text-5xl animate-bounce">🚀</div>
+            <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent">
+              MK-SMART
+            </h1>
+          </div>
+          <p className="mt-2 text-lg text-white/90 font-semibold">
             Faça login para acessar sua conta
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Entrar</CardTitle>
-            <CardDescription>
+        <Card className="rounded-3xl shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-2xl font-black bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
+              Entrar
+            </CardTitle>
+            <CardDescription className="text-base font-medium">
               Acesse sua conta de professor, admin ou coordenador
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                  📧 Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -197,11 +213,14 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="h-12 rounded-xl border-2 border-gray-200 focus:border-[#667eea] transition-all"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                  🔒 Senha
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -209,70 +228,83 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="h-12 rounded-xl border-2 border-gray-200 focus:border-[#667eea] transition-all"
                 />
               </div>
 
               {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
+                <Alert variant="destructive" className="rounded-xl border-2">
+                  <AlertDescription className="font-medium">{error}</AlertDescription>
                 </Alert>
               )}
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {loading ? 'Entrando...' : 'Entrar'}
+              <Button 
+                type="submit" 
+                className="w-full h-12 bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:from-[#5568d3] hover:to-[#653d8e] text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 border-0" 
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  '✨ Entrar'
+                )}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 font-medium">
                 Não tem uma conta?{' '}
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                <a href="#" className="font-bold text-[#667eea] hover:text-[#764ba2] transition-colors">
                   Entre em contato com a escola
                 </a>
               </p>
             </div>
 
-            {/* Botões de teste temporários */}
-            <div className="mt-6 space-y-2 border-t pt-4">
-              <div className="text-sm text-gray-600 text-center mb-3">
-                🔧 Botões de Teste (Temporários)
+            {/* Botões de teste temporários - apenas em desenvolvimento */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-6 space-y-2 border-t border-gray-200 pt-4">
+                <div className="text-xs text-gray-500 text-center mb-3 font-semibold">
+                  🔧 Botões de Teste (Apenas Desenvolvimento)
+                </div>
+                
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={testUserExists}
+                  className="w-full rounded-xl border-2 hover:bg-gray-50"
+                >
+                  🔍 Testar Usuário
+                </Button>
+
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={createTestUser}
+                  className="w-full rounded-xl border-2 hover:bg-gray-50"
+                >
+                  🧪 Criar Usuário Teste
+                </Button>
+
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={testMagicLink}
+                  className="w-full rounded-xl border-2 hover:bg-gray-50"
+                >
+                  🔗 Testar Magic Link
+                </Button>
               </div>
-              
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={testUserExists}
-                className="w-full"
-              >
-                🔍 Testar Usuário
-              </Button>
-
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={createTestUser}
-                className="w-full"
-              >
-                🧪 Criar Usuário Teste
-              </Button>
-
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={testMagicLink}
-                className="w-full"
-              >
-                🔗 Testar Magic Link
-              </Button>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="text-center">
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-white/80 font-medium">
             Para alunos, acesse{' '}
-            <a href="/entrar" className="font-medium text-blue-600 hover:text-blue-500">
+            <a href="/entrar" className="font-bold text-white hover:text-purple-200 transition-colors underline">
               /entrar
             </a>
           </p>

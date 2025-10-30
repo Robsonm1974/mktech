@@ -92,23 +92,21 @@ function EntrarPageContent() {
     try {
       console.log('🔍 Buscando sessão com código:', sessionCode.toUpperCase())
       
-      // Buscar sessão ativa pelo código (sem timeout para debug)
+      // Buscar sessão ativa pelo código usando RPC pública (bypass RLS)
       console.time('⏱️ Tempo de busca da sessão')
       
-      const { data: session, error: sessionError } = await supabase
-        .from('sessions')
-        .select('id, status, aula_id, turma_id, tenant_id')
-        .eq('session_code', sessionCode.toUpperCase())
-        .eq('status', 'active')
-        .single()
+      const { data: resultData, error: rpcError } = await supabase.rpc(
+        'get_session_by_code_public',
+        { p_session_code: sessionCode.toUpperCase() }
+      )
       
       console.timeEnd('⏱️ Tempo de busca da sessão')
 
-      console.log('📊 Sessão encontrada:', session)
-      console.log('❌ Erro:', sessionError)
+      console.log('📊 Resultado RPC:', resultData)
+      console.log('❌ Erro RPC:', rpcError)
 
-      if (sessionError || !session) {
-        console.warn('Sessão não encontrada ou inativa:', sessionError)
+      if (rpcError || !resultData) {
+        console.warn('Sessão não encontrada ou inativa:', rpcError)
         setLoading(false)
         setStep('session')
         setErrorData({
@@ -120,30 +118,18 @@ function EntrarPageContent() {
         return
       }
 
-      // Buscar alunos da turma
-      console.log('🔍 Buscando alunos da turma:', session.turma_id)
-      
-      const { data: alunos, error: alunosError } = await supabase
-        .from('alunos')
-        .select('id, full_name, icone_afinidade, active')
-        .eq('turma_id', session.turma_id)
-        .eq('active', true)
-      
-      console.log('✅ Alunos encontrados:', alunos)
-      console.log('❌ Erro ao buscar alunos:', alunosError)
+      // Extrair dados do JSON retornado (sessão + alunos + tenant)
+      const session = resultData.session
+      const alunos = resultData.alunos || []
+      const tenant = resultData.tenant
 
-      if (alunosError || !alunos?.length) {
+      console.log('✅ Sessão:', session)
+      console.log('✅ Alunos:', alunos)
+      console.log('✅ Tenant:', tenant)
+
+      if (!alunos || alunos.length === 0) {
         throw new Error('Nenhum aluno encontrado nesta turma')
       }
-
-      // Buscar tenant (separadamente para evitar problemas)
-      const { data: tenant } = await supabase
-        .from('tenants')
-        .select('id, name, slug')
-        .eq('id', session.tenant_id)
-        .single()
-
-      console.log('🏢 Tenant encontrado:', tenant)
 
       // Salvar dados da sessão e ir para próximo passo
       sessionStorage.setItem('currentSession', JSON.stringify({
@@ -152,7 +138,7 @@ function EntrarPageContent() {
         turmaId: session.turma_id,
         tenantSlug: tenant?.slug || '',
         tenantName: tenant?.name || '',
-        alunos
+        alunos: alunos
       }))
 
       setStep('student')
@@ -218,46 +204,57 @@ function EntrarPageContent() {
         throw new Error('SessionId não encontrado. Recomece o processo.')
       }
       
-      // Buscar dados do aluno
-      const { data: aluno, error: alunoError } = await supabase
-        .from('alunos')
-        .select('id, pin_code, icone_afinidade')
-        .eq('id', studentId)
-        .single()
+      // Validar PIN usando RPC pública (bypass RLS)
+      const { data: validationResult, error: validationError } = await supabase.rpc(
+        'validate_student_pin',
+        { 
+          p_aluno_id: studentId,
+          p_pin: pin
+        }
+      )
 
-      console.log('✅ Aluno encontrado:', aluno)
-      console.log('❌ Erro ao buscar aluno:', alunoError)
+      console.log('✅ Resultado validação:', validationResult)
+      console.log('❌ Erro validação:', validationError)
 
-      if (alunoError || !aluno) {
+      if (validationError || !validationResult) {
         setLoading(false)
-        toast({ title: 'Aluno não encontrado', description: 'Volte e selecione novamente.', duration: 2200 })
+        toast({ title: 'Erro na validação', description: 'Tente novamente.', duration: 2200 })
         return
       }
 
-      // Validar PIN e ícone
-      if (aluno.pin_code !== pin) {
-        console.warn('PIN incorreto')
-        const current = attemptsByStudent[studentId] || 0
-        const next = current + 1
-        const attemptsLeft = Math.max(0, 3 - next)
-        setAttemptsByStudent({ ...attemptsByStudent, [studentId]: next })
-        setPin('')
-        setLoading(false)
-        setErrorData({
-          type: 'pin',
-          title: 'Senha Incorreta',
-          description: 'O PIN digitado não está correto. Verifique e tente novamente.',
-          studentName: alunoSelecionadoNome(aluno?.id),
-          icon: aluno?.icone_afinidade,
-          attemptsLeft
-        })
-        setErrorOpen(true)
-        return
+      if (!validationResult.valid) {
+        const errorMsg = validationResult.error || 'Erro desconhecido'
+        
+        if (errorMsg === 'Aluno não encontrado') {
+          setLoading(false)
+          toast({ title: 'Aluno não encontrado', description: 'Volte e selecione novamente.', duration: 2200 })
+          return
+        }
+        
+        // PIN incorreto
+        if (errorMsg === 'PIN incorreto') {
+          const current = attemptsByStudent[studentId] || 0
+          const next = current + 1
+          const attemptsLeft = Math.max(0, 3 - next)
+          setAttemptsByStudent({ ...attemptsByStudent, [studentId]: next })
+          setPin('')
+          setLoading(false)
+          setErrorData({
+            type: 'pin',
+            title: 'Senha Incorreta',
+            description: 'O PIN digitado não está correto. Verifique e tente novamente.',
+            studentName: alunoSelecionadoNome(studentId),
+            icon: selectedIcon,
+            attemptsLeft
+          })
+          setErrorOpen(true)
+          return
+        }
       }
 
-      // ✅ REMOVIDO: Não precisa mais validar ícone, pois é setado automaticamente
-      // O ícone já foi validado ao selecionar o aluno
-      if (aluno.icone_afinidade !== selectedIcon) {
+      // PIN válido, verificar se o ícone corresponde
+      const alunoIcone = validationResult.icone_afinidade
+      if (alunoIcone !== selectedIcon) {
         console.warn('Ícone divergente; retornando para seleção de aluno')
         setLoading(false)
         setStep('student')

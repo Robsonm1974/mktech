@@ -265,25 +265,23 @@ export default function SessaoPage() {
 
   const loadSessionData = async (alunoId: string) => {
     try {
-      // Buscar sessão básica
-      const { data: session, error: sessionError } = await supabase
-        .from('sessions')
-        .select('id, aula_id, status')
-        .eq('id', sessionId)
-        .single()
+      // Buscar sessão + aula usando RPC pública (bypass RLS)
+      const { data: sessionData, error: sessionError } = await supabase.rpc(
+        'get_session_data_for_student',
+        { p_session_id: sessionId }
+      )
 
-      if (sessionError || !session) {
+      console.log('📊 Dados da sessão (RPC):', sessionData)
+      console.log('❌ Erro (RPC):', sessionError)
+
+      if (sessionError || !sessionData) {
         throw new Error('Sessão não encontrada')
       }
 
-      // Buscar aula
-      const { data: aulaData, error: aulaError } = await supabase
-        .from('aulas')
-        .select('id, titulo, descricao')
-        .eq('id', session.aula_id)
-        .single()
+      const session = sessionData.session
+      const aulaData = sessionData.aula
 
-      if (aulaError || !aulaData) {
+      if (!aulaData) {
         throw new Error('Aula não encontrada')
       }
 
