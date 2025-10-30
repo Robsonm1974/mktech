@@ -110,23 +110,70 @@ export default function ConfigurarMidiaModal({
         midia_url: form.midia_url
       })
 
-      // Atualizar bloco (sem updated_at para evitar erro se não existir)
-      const { data, error } = await supabase
+      // 1️⃣ Primeiro: verificar se o bloco existe e buscar seus dados atuais
+      const { data: blocoAtual, error: fetchError } = await supabase
+        .from('blocos_templates')
+        .select('*')
+        .eq('id', blocoId)
+        .single()
+
+      if (fetchError) {
+        console.error('❌ Erro ao buscar bloco:', fetchError)
+        throw new Error(`Não foi possível carregar o bloco: ${fetchError.message}`)
+      }
+
+      if (!blocoAtual) {
+        throw new Error('Bloco não encontrado no banco de dados')
+      }
+
+      console.log('📋 Bloco encontrado:', {
+        id: blocoAtual.id,
+        codigo_bloco: blocoAtual.codigo_bloco,
+        titulo: blocoAtual.titulo,
+        tipo_midia_atual: blocoAtual.tipo_midia,
+        status_atual: blocoAtual.status
+      })
+
+      // 2️⃣ Atualizar o bloco com os novos dados
+      const { data: updatedData, error: updateError } = await supabase
         .from('blocos_templates')
         .update({
           tipo_midia: form.tipo_midia,
           midia_url: form.midia_url,
-          status: 'com_midia'
+          status: 'com_midia',
+          updated_at: new Date().toISOString()
         })
         .eq('id', blocoId)
-        .select()
+        .select('id, tipo_midia, midia_url, status')
 
-      if (error) {
-        console.error('❌ Erro do Supabase:', error)
-        throw error
+      if (updateError) {
+        console.error('❌ Erro do Supabase UPDATE:', {
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code
+        })
+        throw new Error(`Falha ao atualizar: ${updateError.message}`)
       }
 
-      console.log('✅ Mídia salva com sucesso:', data)
+      if (!updatedData || updatedData.length === 0) {
+        console.warn('⚠️ UPDATE não retornou dados. Possível problema de RLS.')
+        // Verificar se realmente salvou fazendo uma nova consulta
+        const { data: verificacao } = await supabase
+          .from('blocos_templates')
+          .select('tipo_midia, midia_url')
+          .eq('id', blocoId)
+          .single()
+        
+        if (verificacao && verificacao.tipo_midia === form.tipo_midia) {
+          console.log('✅ Verificação: dados foram salvos corretamente!')
+        } else {
+          throw new Error('Os dados não foram persistidos. Verifique as permissões RLS.')
+        }
+      } else {
+        console.log('✅ Mídia salva com sucesso:', updatedData[0])
+      }
+
       toast.success('Mídia configurada com sucesso!')
       onSave?.()
       onClose()
@@ -178,6 +225,20 @@ export default function ConfigurarMidiaModal({
           </div>
         )
       
+      case 'external_iframe':
+        return (
+          <div className="aspect-video bg-black rounded-lg overflow-hidden">
+            <iframe
+              src={embedUrl}
+              className="w-full h-full"
+              title="Preview Conteúdo Externo"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              allow="fullscreen; autoplay; clipboard-write; encrypted-media"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        )
+
       case 'lottie':
       case 'phaser':
       case 'h5p':
@@ -233,6 +294,7 @@ export default function ConfigurarMidiaModal({
                 <option value="phaser">🎮 Jogo Phaser</option>
                 <option value="h5p">📚 Conteúdo H5P</option>
                 <option value="html5">🎯 Jogo HTML5</option>
+                <option value="external_iframe">🧩 Conteúdo Externo (iframe)</option>
               </select>
             </div>
 
@@ -254,7 +316,7 @@ export default function ConfigurarMidiaModal({
                       ? 'https://example.com/animation.json'
                       : form.tipo_midia === 'html5'
                       ? '/jogos-html5/math_collection_game/math_collection_game.html'
-                      : 'https://example.com/content'
+                      : 'https://example.com/conteudo'
                   }
                   disabled={saving}
                 />
@@ -264,6 +326,7 @@ export default function ConfigurarMidiaModal({
                   {form.tipo_midia === 'phaser' && 'URL onde o jogo Phaser está hospedado'}
                   {form.tipo_midia === 'h5p' && 'URL do conteúdo H5P embarcável'}
                   {form.tipo_midia === 'html5' && 'URL do arquivo HTML do jogo (caminho local como /jogos-html5/...)'}
+                  {form.tipo_midia === 'external_iframe' && 'Qualquer URL HTTPS (ex.: Genially). Será exibido em iframe seguro.'}
                 </p>
               </div>
             )}

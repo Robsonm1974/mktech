@@ -12,6 +12,8 @@ import { toast } from '@/hooks/use-toast'
 import { QuizAnimado, FloatingPoints, TransitionScreen, ConfettiCelebration } from '@/components/gamification'
 import { useSound } from '@/hooks/useSound'
 import AdventureRunnerPlayer from '@/components/games/AdventureRunnerPlayer'
+import ExternalEmbedPlayer from '@/components/aluno/ExternalEmbedPlayer'
+import ImmersiveControls from '@/components/aluno/ImmersiveControls'
 
 // ============================================================================
 // INTERFACES
@@ -150,6 +152,7 @@ export default function SessaoPage() {
   // Celebração final
   const [mostrarCelebracao, setMostrarCelebracao] = useState(false)
   const [tempoInicioBloco, setTempoInicioBloco] = useState<number>(0)
+  const [externalScorePercent, setExternalScorePercent] = useState<number | null>(null)
 
   // Sons
   const playSound = (soundName: string) => {
@@ -531,6 +534,7 @@ export default function SessaoPage() {
   const handleIniciarBloco = () => {
     setBlocoAtivo(true)
     setTempoInicioBloco(Date.now()) // Iniciar contador de tempo
+    setExternalScorePercent(null)
     playSound('click')
     toast({
       title: 'Bloco iniciado!',
@@ -554,10 +558,14 @@ export default function SessaoPage() {
     if (!participacaoId || !blocoAtual) return
 
     try {
+      const pontosConteudo = blocoAtual.tipo_midia === 'external_iframe'
+        ? (externalScorePercent == null ? 0 : Math.round(blocoAtual.pontos_bloco * (externalScorePercent / 100)))
+        : blocoAtual.pontos_bloco
+
       const { data, error } = await supabase.rpc('aluno_completar_bloco', {
         p_participacao_id: participacaoId,
         p_bloco_template_id: blocoAtual.id,
-        p_pontos_conteudo: blocoAtual.pontos_bloco
+        p_pontos_conteudo: pontosConteudo
       })
 
       if (error || !data.success) {
@@ -986,6 +994,16 @@ export default function SessaoPage() {
           </div>
         )
 
+      case 'external_iframe':
+        return (
+          <ExternalEmbedPlayer
+            url={blocoAtual.midia_url}
+            onScore={(score) => setExternalScorePercent(score)}
+            onComplete={() => handleConteudoVistoCompleto()}
+            fallbackSecondsToComplete={30}
+          />
+        )
+
       default:
         return (
           <Card className="rounded-3xl shadow-xl border-0">
@@ -1212,6 +1230,13 @@ export default function SessaoPage() {
   return (
     <>
       <audio ref={audioRef} />
+      <ImmersiveControls
+        onClose={() => {
+          const key = `studentSession:${sessionId}`
+          if (typeof window !== 'undefined') sessionStorage.removeItem(key)
+          router.replace(`/entrar?sessionId=${sessionId}&v=${Date.now()}`)
+        }}
+      />
       
       <div className="min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2] p-4 md:p-8">
         <div className="max-w-5xl mx-auto space-y-6">

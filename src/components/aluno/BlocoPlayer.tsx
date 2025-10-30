@@ -5,6 +5,7 @@ import VideoPlayer from './VideoPlayer'
 import LottiePlayer from './LottiePlayer'
 import PhaserPlayer from './PhaserPlayer'
 import H5PPlayer from './H5PPlayer'
+import ExternalEmbedPlayer from './ExternalEmbedPlayer'
 import { Loader2 } from 'lucide-react'
 
 interface BlocoPlayerProps {
@@ -76,6 +77,12 @@ export default function BlocoPlayer({
         )}
         {tipo_midia === 'h5p' && (
           <H5PPlayer url={midia_url} onComplete={onComplete} />
+        )}
+        {tipo_midia === 'external_iframe' && (
+          <ExternalEmbedPlayer
+            url={midia_url}
+            onComplete={onComplete}
+          />
         )}
       </div>
 

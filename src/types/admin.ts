@@ -40,7 +40,7 @@ export interface BlocoTemplate {
   numero_sequencia: number | null
   titulo: string
   conteudo_texto: string | null
-  tipo_midia: 'video' | 'lottie' | 'phaser' | 'h5p' | null
+  tipo_midia: 'video' | 'lottie' | 'phaser' | 'h5p' | 'external_iframe' | 'html5' | null
   midia_url: string | null
   midia_metadata: Record<string, unknown> | null
   quiz_id: string | null

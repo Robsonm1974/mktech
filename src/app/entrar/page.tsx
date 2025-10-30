@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+// Removemos Alert visual vermelho; usaremos toasts
+import { useToast } from '@/hooks/use-toast'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client-browser'
 import { Loader2, QrCode, Hash, ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -31,14 +33,41 @@ function EntrarPageContent() {
   const [pin, setPin] = useState('')
   const [selectedIcon, setSelectedIcon] = useState<string>('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  // Não exibimos erro em faixa vermelha; usamos toast
+  const [, setError] = useState('')
   const [step, setStep] = useState<'session' | 'student' | 'auth'>('session')
+  const { toast } = useToast()
   
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createSupabaseBrowserClient()
+  const sessionInputRef = useRef<HTMLInputElement | null>(null)
+  const pinInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Modal lúdico de erro
+  const [errorOpen, setErrorOpen] = useState(false)
+  const [attemptsByStudent, setAttemptsByStudent] = useState<Record<string, number>>({})
+  const [errorData, setErrorData] = useState<{
+    type: 'pin' | 'session'
+    title: string
+    description: string
+    studentName?: string
+    icon?: string
+    attemptsLeft?: number
+  } | null>(null)
 
   const icons = ['dog', 'cat', 'fruit', 'flower']
+
+  const alunoSelecionadoNome = (id?: string) => {
+    if (!id) return undefined
+    try {
+      const sessionData = JSON.parse(sessionStorage.getItem('currentSession') || '{}')
+      const aluno = sessionData.alunos?.find((a: { id: string; full_name: string }) => a.id === id)
+      return aluno?.full_name as string | undefined
+    } catch {
+      return undefined
+    }
+  }
 
   // Ler código da URL se vier do QR Code
   useEffect(() => {
@@ -53,6 +82,7 @@ function EntrarPageContent() {
     e.preventDefault()
     if (!sessionCode.trim()) {
       setError('Digite o código da sessão')
+      toast({ title: 'Código da sessão', description: 'Digite o código para continuar.', duration: 2200 })
       return
     }
     
@@ -78,8 +108,16 @@ function EntrarPageContent() {
       console.log('❌ Erro:', sessionError)
 
       if (sessionError || !session) {
-        console.error('❌ Erro completo:', sessionError)
-        throw new Error('Sessão não encontrada ou inativa')
+        console.warn('Sessão não encontrada ou inativa:', sessionError)
+        setLoading(false)
+        setStep('session')
+        setErrorData({
+          type: 'session',
+          title: 'Código inválido',
+          description: 'Verifique o código ou peça um novo QR.'
+        })
+        setErrorOpen(true)
+        return
       }
 
       // Buscar alunos da turma
@@ -119,7 +157,8 @@ function EntrarPageContent() {
 
       setStep('student')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao validar sessão')
+      console.warn('Falha ao validar sessão:', err)
+      toast({ title: 'Falha na validação', description: 'Tente novamente em instantes.', duration: 2200 })
     } finally {
       setLoading(false)
     }
@@ -149,6 +188,22 @@ function EntrarPageContent() {
     setError('')
 
     try {
+      // Bloqueio por excesso de tentativas (3)
+      const attempts = attemptsByStudent[studentId] || 0
+      if (attempts >= 3) {
+        setLoading(false)
+        setErrorData({
+          type: 'pin',
+          title: 'Muitas tentativas',
+          description: 'Por segurança, reinicie o processo informando o código da sessão.',
+          studentName: alunoSelecionadoNome(studentId),
+          icon: selectedIcon,
+          attemptsLeft: 0,
+        })
+        setErrorOpen(true)
+        return
+      }
+
       const sessionData = JSON.parse(sessionStorage.getItem('currentSession') || '{}')
       
       // Logging detalhado
@@ -174,21 +229,40 @@ function EntrarPageContent() {
       console.log('❌ Erro ao buscar aluno:', alunoError)
 
       if (alunoError || !aluno) {
-        throw new Error('Aluno não encontrado')
+        setLoading(false)
+        toast({ title: 'Aluno não encontrado', description: 'Volte e selecione novamente.', duration: 2200 })
+        return
       }
 
       // Validar PIN e ícone
       if (aluno.pin_code !== pin) {
-        console.error('❌ PIN incorreto. Esperado:', aluno.pin_code, 'Fornecido:', pin)
-        throw new Error('PIN incorreto')
+        console.warn('PIN incorreto')
+        const current = attemptsByStudent[studentId] || 0
+        const next = current + 1
+        const attemptsLeft = Math.max(0, 3 - next)
+        setAttemptsByStudent({ ...attemptsByStudent, [studentId]: next })
+        setPin('')
+        setLoading(false)
+        setErrorData({
+          type: 'pin',
+          title: 'Senha Incorreta',
+          description: 'O PIN digitado não está correto. Verifique e tente novamente.',
+          studentName: alunoSelecionadoNome(aluno?.id),
+          icon: aluno?.icone_afinidade,
+          attemptsLeft
+        })
+        setErrorOpen(true)
+        return
       }
 
       // ✅ REMOVIDO: Não precisa mais validar ícone, pois é setado automaticamente
       // O ícone já foi validado ao selecionar o aluno
       if (aluno.icone_afinidade !== selectedIcon) {
-        console.error('❌ ERRO CRÍTICO: Ícone não corresponde ao aluno selecionado')
-        console.error('   Esperado:', aluno.icone_afinidade, 'Fornecido:', selectedIcon)
-        throw new Error('Erro de autenticação. Tente novamente.')
+        console.warn('Ícone divergente; retornando para seleção de aluno')
+        setLoading(false)
+        setStep('student')
+        toast({ title: 'Confirme seu ícone', description: 'Selecione o aluno novamente para confirmar.', duration: 2500 })
+        return
       }
 
       console.log('✅ Validação bem-sucedida!')
@@ -217,11 +291,9 @@ function EntrarPageContent() {
       
       console.log('✅ Router.push executado')
     } catch (err) {
-      console.error('❌ Erro na autenticação:', err)
-      setError(err instanceof Error ? err.message : 'Erro na autenticação')
-      // ✅ CORRIGIDO: Sempre resetar loading em caso de erro
+      console.warn('Erro inesperado na autenticação:', err)
+      toast({ title: 'Erro na autenticação', description: 'Tente novamente.', duration: 2200 })
       setLoading(false)
-      // ✅ CORRIGIDO: Resetar PIN para permitir nova tentativa
       setPin('')
     }
   }
@@ -298,14 +370,11 @@ function EntrarPageContent() {
                 onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
                 className="text-center text-3xl font-black py-6 rounded-2xl border-4 border-purple-200 focus:border-purple-500 transition-all"
                 required
+                ref={sessionInputRef}
               />
             </div>
 
-            {error && (
-              <Alert variant="destructive" className="rounded-xl">
-                <AlertDescription className="font-medium">{error}</AlertDescription>
-              </Alert>
-            )}
+            {/* Feedback visual via toast; removido alerta vermelho */}
 
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
@@ -382,6 +451,8 @@ function EntrarPageContent() {
   const renderAuthStep = () => {
     const sessionData = JSON.parse(sessionStorage.getItem('currentSession') || '{}')
     const alunoSelecionado = sessionData.alunos?.find((a: { id: string; full_name: string; icone_afinidade: string }) => a.id === studentId)
+    const attempts = attemptsByStudent[studentId] || 0
+    const attemptsLeft = Math.max(0, 3 - attempts)
     
     return (
       <motion.div
@@ -433,26 +504,18 @@ function EntrarPageContent() {
                   className="text-center text-4xl font-black py-6 rounded-2xl border-4 border-purple-200 focus:border-purple-500 transition-all tracking-widest"
                   required
                   autoFocus
+                  ref={pinInputRef}
                 />
               </div>
 
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <Alert variant="destructive" className="rounded-xl">
-                    <AlertDescription className="font-medium text-center">{error}</AlertDescription>
-                  </Alert>
-                </motion.div>
-              )}
+              {/* Feedback visual via toast; removido alerta vermelho */}
 
               <div className="space-y-3">
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Button
                     type="submit"
                     className="w-full py-6 rounded-2xl text-xl font-black bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:shadow-2xl transition-all"
-                    disabled={loading || pin.length !== 4}
+                  disabled={loading || pin.length !== 4 || attemptsLeft === 0}
                   >
                     {loading && <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
                     {loading ? 'Entrando...' : 'Entrar na Aula 🎯'}
@@ -502,6 +565,83 @@ function EntrarPageContent() {
         {step === 'student' && renderStudentStep()}
         {step === 'auth' && renderAuthStep()}
       </div>
+
+      {/* Modal lúdico para erros de sessão/PIN */}
+      <Dialog open={errorOpen} onOpenChange={setErrorOpen}>
+        <DialogContent className="p-0 bg-transparent border-0 shadow-none">
+          {/* Acessibilidade: Title/Description para Radix */}
+          <DialogTitle className="sr-only">{errorData?.title || 'Aviso'}</DialogTitle>
+          <DialogDescription className="sr-only">{errorData?.description || 'Mensagem do sistema'}</DialogDescription>
+          <div className="max-w-md w-full bg-white rounded-3xl overflow-hidden shadow-2xl">
+            <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-8 text-center">
+              <div className="w-20 h-20 mx-auto mb-4 bg-white/20 rounded-2xl flex items-center justify-center">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  <line x1="12" y1="15" x2="12" y2="18"></line>
+                </svg>
+              </div>
+              <h2 className="text-white text-2xl font-black">{errorData?.title || 'Algo deu errado'}</h2>
+              <p className="text-white/90 mt-1">{errorData?.type === 'pin' ? 'Não foi possível acessar' : 'Tente novamente'}</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {errorData?.type === 'pin' && (
+                <div className="flex items-center gap-4 p-4 rounded-2xl border-2 bg-gradient-to-br from-purple-50 to-blue-50">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-3xl">
+                    {getEmojiFromIcon(errorData?.icon || '')}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-lg font-bold text-gray-800">{errorData?.studentName || 'Aluno'}</div>
+                    <div className="text-sm text-gray-600">Tentando entrar...</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="p-4 rounded-2xl border-2 border-red-200 bg-gradient-to-br from-red-50 to-rose-50 text-center">
+                <div className="text-4xl mb-1">❌</div>
+                <div className="text-red-700 font-bold mb-1">{errorData?.title}</div>
+                <div className="text-gray-600 text-sm">{errorData?.description}</div>
+              </div>
+
+              {typeof errorData?.attemptsLeft === 'number' && (
+                <div className="text-center mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold">
+                  ⚠️ Tentativas restantes: {errorData?.attemptsLeft} de 3
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3 mt-2">
+                <Button
+                  className="w-full py-4 rounded-xl text-base font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2]"
+                  onClick={() => {
+                    setErrorOpen(false)
+                    setTimeout(() => {
+                      if (errorData?.type === 'pin' && (errorData?.attemptsLeft ?? 1) > 0) {
+                        pinInputRef.current?.focus()
+                      } else {
+                        setStep('session')
+                        sessionInputRef.current?.focus()
+                      }
+                    }, 60)
+                  }}
+                >
+                  🔄 Tentar Novamente
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full py-4 rounded-xl text-base font-bold"
+                  onClick={() => {
+                    toast({ title: 'Chamando Professor', description: 'Seu professor foi avisado.', duration: 2000 })
+                    setErrorOpen(false)
+                  }}
+                >
+                  🙋 Chamar Professor
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
